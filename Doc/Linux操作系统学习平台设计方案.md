@@ -109,16 +109,21 @@ Linux操作系统学习平台采用C++开发，基于B/S架构，分为前端展
 - **日志库**：spdlog (https://github.com/gabime/spdlog)
 
 #### 2.1.3 用户管理鉴权层
-- **Logto服务**：提供OIDC认证功能，负责用户注册、登录和令牌签发
-- **React前端**：用户界面，集成Logto SDK处理登录流程
+- **认证服务**：基于JWT的认证系统，负责用户注册、登录和令牌签发
+- **React前端**：用户界面，处理登录流程
 - **C++后端API**：业务逻辑实现，包含JWT验证中间件
+- **角色权限控制**：基于RBAC(基于角色的访问控制)模型实现权限管理
+- **第三方登录支持**：预留OAuth接口，支持未来扩展第三方登录功能
 
 ### 2.2 系统功能模块图
 ```
 Linux操作系统学习平台
 ├── 用户管理模块
 │   ├── 注册登录子模块
-│   └── 个人信息管理子模块
+│   │   ├── 本地账号认证
+│   │   └── 第三方登录认证（预留）
+│   ├── 个人信息管理子模块
+│   └── 角色权限管理子模块
 ├── 教师功能模块
 │   ├── 资源管理模块
 │   └── 课程管理模块
@@ -201,14 +206,36 @@ erDiagram
     USER {
         int user_id PK
         string username UK
-        string password
+        string password_hash
+        string salt
         string email UK
         string phone
-        enum role "student/teacher/admin"
         string avatar
         string bio
+        int status
         datetime created_at
         datetime updated_at
+    }
+    
+    ROLE {
+        int id PK
+        string name UK
+        string description
+    }
+    
+    USER_ROLE {
+        int user_id PK,FK
+        int role_id PK,FK
+    }
+    
+    OAUTH_ACCOUNT {
+        int id PK
+        int user_id FK
+        string provider
+        string provider_user_id
+        string access_token
+        string refresh_token
+        datetime expires_at
     }
     
     COURSE {
@@ -302,6 +329,9 @@ erDiagram
         datetime updated_at
     }
     
+    USER ||--o{ USER_ROLE : "has"
+    ROLE ||--o{ USER_ROLE : "assigned_to"
+    USER ||--o{ OAUTH_ACCOUNT : "has"
     USER ||--o{ COURSE : "teaches"
     USER ||--o{ RESOURCE : "uploads"
     USER ||--o{ IMAGE : "creates"
@@ -326,23 +356,65 @@ erDiagram
 
 #### 3.2.1 表结构设计
 
-1. **用户表(User)**
+1. **用户表(users)**
 ```sql
 CREATE TABLE User (
     user_id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL UNIQUE,
-    password TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
+    password_hash VARCHAR(256) NOT NULL,
+    salt VARCHAR(100) NOT NULL,
     phone TEXT,
-    role TEXT NOT NULL CHECK(role IN ('student', 'teacher', 'admin')),
     avatar TEXT,
     bio TEXT,
+    status INTEGER DEFAULT 1, -- 1:正常 0:禁用
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```
 
-2. **课程表(Course)**
+2. **角色表(roles)**
+```sql
+CREATE TABLE roles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name VARCHAR(20) UNIQUE NOT NULL,
+    description TEXT
+);
+
+-- 预设角色
+INSERT INTO roles (name, description) VALUES 
+('admin', '管理员'),
+('teacher', '教师'),
+('student', '学生');
+```
+
+3. **用户-角色关联表(user_roles)**
+```sql
+CREATE TABLE user_roles (
+    user_id INTEGER,
+    role_id INTEGER,
+    PRIMARY KEY (user_id, role_id),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (role_id) REFERENCES roles(id)
+);
+```
+
+4. **第三方认证表(oauth_accounts)**
+```sql
+CREATE TABLE oauth_accounts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    provider VARCHAR(20) NOT NULL, -- 'google', 'github', 'wechat'等
+    provider_user_id VARCHAR(100) NOT NULL,
+    access_token TEXT,
+    refresh_token TEXT,
+    expires_at TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    UNIQUE (provider, provider_user_id)
+);
+```
+
+5. **课程表(courses)**
 ```sql
 CREATE TABLE Course (
     course_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -356,7 +428,7 @@ CREATE TABLE Course (
 );
 ```
 
-3. **课程选修表(CourseEnrollment)**
+6. **课程选修表(CourseEnrollment)**
 ```sql
 CREATE TABLE CourseEnrollment (
     enrollment_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -369,7 +441,7 @@ CREATE TABLE CourseEnrollment (
 );
 ```
 
-4. **通知表(Notification)**
+7. **通知表(Notification)**
 ```sql
 CREATE TABLE Notification (
     notification_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -384,7 +456,7 @@ CREATE TABLE Notification (
 );
 ```
 
-5. **资源表(Resource)**
+8. **资源表(Resource)**
 ```sql
 CREATE TABLE Resource (
     resource_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -400,7 +472,7 @@ CREATE TABLE Resource (
 );
 ```
 
-6. **课程资源关联表(CourseResource)**
+9. **课程资源关联表(CourseResource)**
 ```sql
 CREATE TABLE CourseResource (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -413,7 +485,7 @@ CREATE TABLE CourseResource (
 );
 ```
 
-7. **镜像表(Image)**
+10. **镜像表(Image)**
 ```sql
 CREATE TABLE Image (
     image_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -429,7 +501,7 @@ CREATE TABLE Image (
 );
 ```
 
-8. **课程镜像关联表(CourseImage)**
+11. **课程镜像关联表(CourseImage)**
 ```sql
 CREATE TABLE CourseImage (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -442,7 +514,7 @@ CREATE TABLE CourseImage (
 );
 ```
 
-9. **容器表(Container)**
+12. **容器表(Container)**
 ```sql
 CREATE TABLE Container (
     container_id TEXT PRIMARY KEY,
@@ -463,7 +535,7 @@ CREATE TABLE Container (
 );
 ```
 
-10. **热门课程缓存表(PopularCoursesCache)**
+13. **热门课程缓存表(PopularCoursesCache)**
 ```sql
 CREATE TABLE PopularCoursesCache (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -479,7 +551,7 @@ CREATE TABLE PopularCoursesCache (
 );
 ```
 
-11. **数据库视图**
+14. **数据库视图**
 ```sql
 CREATE VIEW PopularCourses AS
 SELECT 
@@ -566,6 +638,24 @@ ORDER BY
 
 这种设计既满足了功能需求，又优化了性能，避免了每次访问首页都执行复杂的统计查询。
 
+#### 3.3.5 用户认证系统设计
+
+1. **分表设计的优势**
+   - **数据一致性**：角色信息集中管理，避免冗余和不一致
+   - **扩展性**：可以轻松添加新角色而不影响现有用户数据
+   - **灵活性**：支持一个用户拥有多个角色（如既是教师又是管理员）
+
+2. **用户-角色关系**
+   - 采用多对多关系设计，通过user_roles关联表实现
+   - 一个用户可以拥有多个角色
+   - 一个角色可以被多个用户拥有
+   - 这种设计使系统更加灵活，例如：一个用户既可以是教师又可以是学生
+
+3. **第三方登录支持**
+   - 通过oauth_accounts表预留第三方登录扩展性
+   - 支持一个用户关联多个第三方账号
+   - 无需修改核心用户表结构即可扩展新的认证方式
+
 ## 4. 用户权限与页面设计
 
 ### 4.1 用户权限设计
@@ -643,3 +733,87 @@ ORDER BY
 
 ### 5.4 系统部署方案
 - **单机部署**：将系统部署在一台服务器上，同时运行Web服务、数据库服务和Docker服务
+
+### 5.5 认证流程实现
+
+### 5.5.1 用户注册流程
+
+1. **前端注册流程**
+   - 用户填写表单信息(用户名、邮箱、密码、选择角色)
+   - 前端进行表单验证(格式、必填项等)
+   - 发送POST请求到`/api/auth/register`
+
+2. **后端处理**
+   - 验证请求数据合法性
+   - 检查用户名和邮箱是否已存在
+   - 生成随机盐(salt)
+   - 使用加盐哈希算法处理密码：`password_hash = Hash(password + salt)`
+   - 将用户数据和盐值存入users表
+   - 在user_roles表中创建对应角色关联
+   - 返回注册成功信息
+
+### 5.5.2 用户登录流程
+
+1. **前端登录流程**
+   - 用户输入用户名/邮箱和密码
+   - 发送POST请求到`/api/auth/login`
+
+2. **后端处理**
+   - 根据用户名/邮箱查询用户记录
+   - 获取数据库中存储的盐值和密码哈希
+   - 对输入密码使用相同盐值进行哈希，与存储的哈希比对
+   - 验证通过后，查询用户角色
+   - 生成JWT令牌：`token = JWT.sign({user_id, roles}, secretKey, {expiresIn: '24h'})`
+   - 返回token和基本用户信息（包括角色）
+
+3. **前端存储与使用**
+   - 将JWT存储在localStorage或sessionStorage
+   - 在后续请求中添加到Authorization头部
+   - 解析JWT中的用户和角色信息，用于前端权限控制
+
+### 5.5.3 访问保护资源流程
+
+1. **前端发送请求**
+   - 从存储中获取token
+   - 添加Authorization头：`Authorization: Bearer {token}`
+   - 发送请求到受保护的API
+
+2. **后端中间件验证**
+   - JWT验证中间件拦截请求
+   - 从Authorization头提取token
+   - 验证token签名和过期时间
+   - 从token中解析用户ID和角色信息
+   - 将用户信息附加到请求对象上
+   - 根据请求的资源和用户角色决定是否允许访问
+
+### 5.5.4 第三方登录流程（预留扩展）
+
+1. **OAuth认证流程**
+   - 前端点击第三方登录按钮
+   - 跳转到第三方认证页面
+   - 用户授权后，第三方回调到应用预设URL并携带code
+   - 前端获取code，发送到后端`/api/auth/oauth/{provider}`
+
+2. **后端处理**
+   - 使用code换取access_token
+   - 使用access_token获取用户信息
+   - 检查用户是否已关联本地账号(oauth_accounts表)
+   - 若已关联，直接登录；若未关联，创建新账号并关联
+   - 生成JWT令牌并返回
+
+### 5.5.5 安全考虑
+
+1. **密码存储**：使用盐值+哈希算法(SHA-256或bcrypt)，永不存储明文密码
+2. **传输安全**：所有请求使用HTTPS加密传输
+3. **令牌安全**：JWT令牌设置合理过期时间，敏感操作要求重新验证
+4. **限制尝试**：对登录尝试失败次数进行限制，防止暴力破解
+5. **CSRF保护**：对关键操作增加CSRF令牌验证
+
+## 5.6 技术实现
+
+### 5.6.1 认证模块依赖库
+
+- **JWT验证**：jwt-cpp (https://github.com/Thalhammer/jwt-cpp)
+- **密码哈希**：OpenSSL/Crypto++ (用于密码哈希)
+- **HTTP服务器**：Crow (https://github.com/CrowCpp/Crow)
+- **数据库驱动**：SQLiteCpp (https://github.com/SRombauts/SQLiteCpp)
