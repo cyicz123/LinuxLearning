@@ -1,0 +1,645 @@
+## 1. 需求分析
+
+### 1.1 项目背景
+Linux操作系统学习平台旨在为教师和学生提供一个Linux学习环境，通过该平台教师可以提供Linux操作系统的学习资源，学生可以进行Linux操作系统的安装、学习和测试，管理员可以对用户信息等进行管理。
+
+### 1.2 用户角色
+- **教师用户**：提供Linux操作系统的学习资源，包括背景资料、安装包链接，Linux系统管理课程资料等, 增删改查班级信息，增删改查学生信息。
+- **学生用户**：通过平台进行Linux操作系统的安装、学习和测试等
+- **管理员**：对用户信息, 班级信息, 资源等进行管理
+
+### 1.3 功能需求
+#### 1.3.1 学生功能
+**用户管理：**
+
+**注册与登录**：
+- 用户可以通过邮箱或用户名进行注册和登录。
+- 登录后可以修改个人密码和个人信息（如姓名、联系方式等）。
+
+**个人信息管理**：
+- 用户可以查看和编辑自己的个人信息，包括头像、简介等。
+
+**首页**
+
+**首页布局**：
+- **轮播图**：每天更新并展示当前已选人数最多的几个课程，吸引学生关注热门课程。
+- **最新课程栏**：显示最近添加的课程，点击可进入所有课程列表页面。
+- **课程列表**：所有课程列表支持多选操作，方便学生批量选课。
+
+每个课程可进入查看详情，查看课程介绍，课程老师发布的资源（只有选课后才可以访问）。
+
+首页同样展示已选课程，同样也是点击进入全部已选课程页面。已选课程列表支持批量选中退课。
+
+**课程详情**
+
+**未选课状态**：
+- 查看课程介绍页面，了解课程的基本信息和目标。
+- 查看资源页面，但无法下载资源（需选课后才能访问）。
+
+**已选课状态：**
+1. 课程介绍页面
+2. 通知页面
+3. 资源获取页面：查看和下载教师提供的学习资料，包括文档、视频等。
+4. Linux环境使用页面：查看已创建的环境，或者新建环境。只能选择老师提供好的环境版本进行启动，获取SSH登录信息，连接到容器进行学习。
+   
+   4.1. 对已有的环境进行增删改查。
+
+#### 1.3.2 教师功能
+
+**课程管理**：
+- 教师可以创建新的课程，填写课程名称、描述等基本信息。
+- 编辑现有课程的信息，包括课程内容、封面图片等。
+- 删除不再需要的课程。
+
+课程详情中，可以发布、编辑、删除通知, 可以发布、编辑、删除、资源，可以批量导入、删除选课学生。
+
+**学生管理**：
+- 在课程详情的学生管理页面，教师可以查看每个学生名下的环境信息。
+- 修改学生的环境配置，例如更改镜像版本。
+
+同时，课程详情中有镜像管理页面，老师可以查看每个镜像版本下，已经选择该版本的学生。也可以新建镜像。
+
+**资源管理**：
+- 教师上传的所有资源都会在这个界面汇总。
+- 支持对资源进行编辑和删除操作，资源类型包括文档、视频、压缩包等。
+在课程中公布的资源是以引用的形式公布的。（即，学生可以访问教师在班级中公布了的资源链接进行下载，对课程没公布的资源，无权访问）
+
+**镜像管理**：
+- 教师可以新建镜像模板，定义不同的Linux发行版及其预装软件。
+- 删除镜像模板时，系统会同步删除所有课程中使用该镜像的学生的镜像实例。
+
+#### 1.3.3 管理员功能
+
+**用户管理**：
+- 管理员可以增加、删除、修改和查询用户信息及角色。
+- 支持批量导入用户信息，提高管理效率。
+
+**资源管理**：
+- 查看每个教师名下的资源汇总。
+- 支持对资源进行增加、删除、修改和查询操作。
+
+**镜像管理**：
+- 查看已启动和存在的镜像，对其进行修改。
+- 查看每个选择了该镜像的学生列表，增加或减少可以访问镜像的学生。
+- 如果去除了学生对该镜像的访问权限，系统会自动删除该学生所有该镜像的容器实例。
+
+## 2. 系统功能模块设计
+
+### 2.1 系统总体架构
+Linux操作系统学习平台采用C++开发，基于B/S架构，分为前端展示层和后端处理层。
+
+#### 2.1.1 前端展示层
+- **React**：前端框架，支持组件化开发。
+- **Vite**：现代化的前端构建工具，提供快速的开发服务器启动速度和高效的热更新功能。
+- **shadcn/ui**：基于Tailwind CSS的现代化UI组件库。
+- **Tailwind CSS**：用于样式定制，确保一致性和灵活性。
+- **路由**：使用`react-router-dom`管理页面导航。
+- **状态管理**：使用`React Context`管理全局状态。
+
+#### 2.1.2 后端处理层
+- 使用C++实现核心业务逻辑
+- 采用SQLite数据库存储数据
+- 使用Docker API管理容器
+
+依赖库
+- **JWT验证**：jwt-cpp (https://github.com/Thalhammer/jwt-cpp)
+- **HTTP服务器**：Crow (https://github.com/CrowCpp/Crow)
+- **JSON处理**：nlohmann/json (https://github.com/nlohmann/json)
+- **数据库处理**：SQLiteCpp (https://github.com/SRombauts/SQLiteCpp)
+- **日志库**：spdlog (https://github.com/gabime/spdlog)
+
+#### 2.1.3 用户管理鉴权层
+- **Logto服务**：提供OIDC认证功能，负责用户注册、登录和令牌签发
+- **React前端**：用户界面，集成Logto SDK处理登录流程
+- **C++后端API**：业务逻辑实现，包含JWT验证中间件
+
+### 2.2 系统功能模块图
+```
+Linux操作系统学习平台
+├── 用户管理模块
+│   ├── 注册登录子模块
+│   └── 个人信息管理子模块
+├── 教师功能模块
+│   ├── 资源管理模块
+│   └── 课程管理模块
+├── 学生功能模块
+│   ├── 课程学习模块
+│   ├── 资源获取模块
+│   └── Docker容器管理模块
+└── 管理员功能模块
+    ├── 用户管理模块
+    │   ├── 用户信息管理子模块
+    │   └── 角色权限管理子模块
+    ├── 系统配置模块
+    └── 容器管理模块
+        ├── 容器创建子模块
+        ├── 容器启停子模块
+        ├── 容器删除子模块
+        └── 容器信息查看子模块
+```
+
+### 2.3 核心功能模块详细设计
+
+#### 2.3.1 用户管理模块
+- **注册登录子模块**：实现用户注册、登录功能，支持邮箱或用户名注册，密码加密存储。
+- **个人信息管理子模块**：实现用户个人信息查看、编辑功能，包括头像、简介等。
+
+#### 2.3.2 教师功能模块
+- **资源管理模块**：实现教学资源上传、编辑、删除功能
+- **课程管理模块**：实现课程创建、编辑、删除功能
+
+#### 2.3.3 学生功能模块
+- **课程学习模块**：实现课程浏览、搜索功能
+- **资源获取模块**：实现学习资料查看、下载功能
+- **Docker容器管理模块**：实现Linux发行版选择、容器创建、SSH登录信息获取功能
+
+#### 2.3.4 管理员功能模块
+- **用户管理模块**：
+    - **用户信息管理子模块**：实现用户信息查看、编辑、删除功能。
+    - **角色权限管理子模块**：实现用户角色分配和权限管理。
+- **系统配置模块**：实现系统参数设置功能
+- **容器管理模块**：
+    - **容器创建子模块**：提供界面供管理员创建新的Docker容器。
+    - **容器启停子模块**：控制容器的启动和停止状态。
+    - **容器删除子模块**：删除不再需要的容器。
+    - **容器信息查看子模块**：显示容器的详细信息，包括SSH登录信息。
+
+### 2.4 Docker容器管理功能实现方案
+
+系统将使用Docker容器为每个学生提供独立的Linux环境。具体实现方案如下：
+
+1. **容器创建流程**：
+   - 学生登录平台，进入Docker容器管理页面
+   - 选择Linux发行版（Ubuntu或CentOS）
+   - 点击创建按钮，系统后台调用Docker API创建对应的容器
+   - 容器内自动配置SSH服务
+   - 创建完成后，系统显示容器的SSH登录信息（IP地址、端口、用户名和密码）
+   - 学生使用SSH客户端（如PuTTY、Terminal等）连接到容器进行学习
+
+2. **容器管理功能**：
+   - 创建容器：选择Linux发行版，创建新的Docker容器
+   - 启动/停止容器：控制容器的运行状态
+   - 重启容器：重启容器服务
+   - 删除容器：删除不再需要的容器
+   - 查看容器信息：显示容器的详细信息，包括SSH登录信息
+
+3. **技术实现**：
+   - 使用Docker API或Docker命令行工具创建和管理容器
+   - 容器基础镜像预先配置好SSH服务
+   - 容器创建时自动生成随机密码，并配置到容器中
+   - 使用端口映射将容器内的SSH端口映射到宿主机上
+
+这种方案相比预配置服务器更加灵活，可以根据学生的需求动态创建不同类型的Linux环境，同时资源消耗也比完整的虚拟机要小得多。
+
+## 3. 数据库设计
+
+### 3.1 数据库概念结构设计
+
+#### 3.1.1 实体关系图
+```mermaid
+erDiagram
+    USER {
+        int user_id PK
+        string username UK
+        string password
+        string email UK
+        string phone
+        enum role "student/teacher/admin"
+        string avatar
+        string bio
+        datetime created_at
+        datetime updated_at
+    }
+    
+    COURSE {
+        int course_id PK
+        string course_name
+        string course_description
+        string cover_image
+        int teacher_id FK
+        datetime created_at
+        datetime updated_at
+    }
+    
+    COURSE_ENROLLMENT {
+        int enrollment_id PK
+        int course_id FK
+        int student_id FK
+        datetime created_at
+    }
+    
+    NOTIFICATION {
+        int notification_id PK
+        string title
+        string content
+        int course_id FK
+        int teacher_id FK
+        datetime created_at
+        datetime updated_at
+    }
+    
+    RESOURCE {
+        int resource_id PK
+        string resource_name
+        string resource_description
+        enum resource_type "document/video/archive/other"
+        string resource_path
+        int size
+        int teacher_id FK
+        datetime created_at
+        datetime updated_at
+    }
+    
+    COURSE_RESOURCE {
+        int id PK
+        int course_id FK
+        int resource_id FK
+        datetime created_at
+    }
+    
+    IMAGE {
+        int image_id PK
+        string image_name
+        string image_description
+        string version
+        enum os_type "ubuntu/centos/debian/other"
+        string docker_image_id
+        int teacher_id FK
+        datetime created_at
+        datetime updated_at
+    }
+    
+    COURSE_IMAGE {
+        int id PK
+        int course_id FK
+        int image_id FK
+        datetime created_at
+    }
+    
+    CONTAINER {
+        string container_id PK
+        string container_name
+        string ip_address
+        int ssh_port
+        string username
+        string password
+        enum status "running/stopped/error"
+        int student_id FK
+        int image_id FK
+        int course_id FK
+        datetime created_at
+        datetime updated_at
+    }
+    
+    POPULAR_COURSES_CACHE {
+        int id PK
+        int course_id FK
+        string course_name
+        string course_description
+        string cover_image
+        int teacher_id FK
+        int enrollment_count
+        datetime updated_at
+    }
+    
+    USER ||--o{ COURSE : "teaches"
+    USER ||--o{ RESOURCE : "uploads"
+    USER ||--o{ IMAGE : "creates"
+    USER ||--o{ CONTAINER : "owns"
+    USER ||--o{ COURSE_ENROLLMENT : "enrolls"
+    USER ||--o{ NOTIFICATION : "creates"
+    
+    COURSE ||--o{ NOTIFICATION : "has"
+    COURSE ||--o{ COURSE_RESOURCE : "has"
+    COURSE ||--o{ COURSE_ENROLLMENT : "has"
+    COURSE ||--o{ COURSE_IMAGE : "has"
+    COURSE ||--o{ CONTAINER : "contains"
+    COURSE ||--o{ POPULAR_COURSES_CACHE : "cached_as"
+    
+    RESOURCE ||--o{ COURSE_RESOURCE : "belongs_to"
+    
+    IMAGE ||--o{ COURSE_IMAGE : "used_in"
+    IMAGE ||--o{ CONTAINER : "used_by"
+```
+
+### 3.2 数据库逻辑结构设计
+
+#### 3.2.1 表结构设计
+
+1. **用户表(User)**
+```sql
+CREATE TABLE User (
+    user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL UNIQUE,
+    password TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    phone TEXT,
+    role TEXT NOT NULL CHECK(role IN ('student', 'teacher', 'admin')),
+    avatar TEXT,
+    bio TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP
+);
+```
+
+2. **课程表(Course)**
+```sql
+CREATE TABLE Course (
+    course_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    course_name TEXT NOT NULL,
+    course_description TEXT,
+    cover_image TEXT,
+    teacher_id INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP,
+    FOREIGN KEY (teacher_id) REFERENCES User(user_id)
+);
+```
+
+3. **课程选修表(CourseEnrollment)**
+```sql
+CREATE TABLE CourseEnrollment (
+    enrollment_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    course_id INTEGER NOT NULL,
+    student_id INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (course_id) REFERENCES Course(course_id),
+    FOREIGN KEY (student_id) REFERENCES User(user_id),
+    UNIQUE (course_id, student_id)
+);
+```
+
+4. **通知表(Notification)**
+```sql
+CREATE TABLE Notification (
+    notification_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    course_id INTEGER NOT NULL,
+    teacher_id INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP,
+    FOREIGN KEY (course_id) REFERENCES Course(course_id),
+    FOREIGN KEY (teacher_id) REFERENCES User(user_id)
+);
+```
+
+5. **资源表(Resource)**
+```sql
+CREATE TABLE Resource (
+    resource_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    resource_name TEXT NOT NULL,
+    resource_description TEXT,
+    resource_type TEXT NOT NULL CHECK(resource_type IN ('document', 'video', 'archive', 'other')),
+    resource_path TEXT NOT NULL,
+    size INTEGER NOT NULL,
+    teacher_id INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP,
+    FOREIGN KEY (teacher_id) REFERENCES User(user_id)
+);
+```
+
+6. **课程资源关联表(CourseResource)**
+```sql
+CREATE TABLE CourseResource (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    course_id INTEGER NOT NULL,
+    resource_id INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (course_id) REFERENCES Course(course_id),
+    FOREIGN KEY (resource_id) REFERENCES Resource(resource_id),
+    UNIQUE (course_id, resource_id)
+);
+```
+
+7. **镜像表(Image)**
+```sql
+CREATE TABLE Image (
+    image_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    image_name TEXT NOT NULL,
+    image_description TEXT,
+    version TEXT NOT NULL,
+    os_type TEXT NOT NULL CHECK(os_type IN ('ubuntu', 'centos', 'debian', 'other')),
+    docker_image_id TEXT NOT NULL,
+    teacher_id INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP,
+    FOREIGN KEY (teacher_id) REFERENCES User(user_id)
+);
+```
+
+8. **课程镜像关联表(CourseImage)**
+```sql
+CREATE TABLE CourseImage (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    course_id INTEGER NOT NULL,
+    image_id INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (course_id) REFERENCES Course(course_id),
+    FOREIGN KEY (image_id) REFERENCES Image(image_id) ON DELETE CASCADE,
+    UNIQUE (course_id, image_id)
+);
+```
+
+9. **容器表(Container)**
+```sql
+CREATE TABLE Container (
+    container_id TEXT PRIMARY KEY,
+    container_name TEXT NOT NULL,
+    ip_address TEXT NOT NULL,
+    ssh_port INTEGER NOT NULL,
+    username TEXT NOT NULL,
+    password TEXT NOT NULL,
+    status TEXT NOT NULL CHECK(status IN ('running', 'stopped', 'error')),
+    student_id INTEGER NOT NULL,
+    image_id INTEGER NOT NULL,
+    course_id INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP,
+    FOREIGN KEY (student_id) REFERENCES User(user_id),
+    FOREIGN KEY (image_id) REFERENCES Image(image_id) ON DELETE CASCADE,
+    FOREIGN KEY (course_id) REFERENCES Course(course_id)
+);
+```
+
+10. **热门课程缓存表(PopularCoursesCache)**
+```sql
+CREATE TABLE PopularCoursesCache (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    course_id INTEGER NOT NULL,
+    course_name TEXT NOT NULL,
+    course_description TEXT,
+    cover_image TEXT,
+    teacher_id INTEGER NOT NULL,
+    enrollment_count INTEGER NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (course_id) REFERENCES Course(course_id),
+    FOREIGN KEY (teacher_id) REFERENCES User(user_id)
+);
+```
+
+11. **数据库视图**
+```sql
+CREATE VIEW PopularCourses AS
+SELECT 
+    c.course_id,
+    c.course_name,
+    c.course_description,
+    c.cover_image,
+    c.teacher_id,
+    COUNT(ce.student_id) AS enrollment_count
+FROM 
+    Course c
+LEFT JOIN 
+    CourseEnrollment ce ON c.course_id = ce.course_id
+GROUP BY 
+    c.course_id
+ORDER BY 
+    enrollment_count DESC;
+```
+
+### 3.3 数据库设计说明
+
+#### 3.3.1 主要实体及关系
+
+1. **用户(User)**
+   - 属性：用户ID、用户名、密码、邮箱、电话、角色、头像、简介等
+   - 关系：一个用户可以是教师、学生或管理员
+   - 教师可以创建课程、上传资源、创建镜像
+   - 学生可以选修课程、创建容器
+
+2. **课程(Course)**
+   - 属性：课程ID、课程名称、课程描述、封面图片等
+   - 关系：一个课程由一个教师创建，多个学生选修
+   - 一个课程可以包含多个通知、多个资源、多个镜像
+
+3. **资源(Resource)**
+   - 属性：资源ID、资源名称、资源描述、资源类型、资源路径、大小等
+   - 关系：一个资源由一个教师上传，可以被多个课程引用
+
+4. **镜像(Image)**
+   - 属性：镜像ID、镜像名称、镜像描述、版本、操作系统类型等
+   - 关系：一个镜像由一个教师创建，可以被多个课程使用，可以被多个容器使用
+
+5. **容器(Container)**
+   - 属性：容器ID、容器名称、IP地址、SSH端口、用户名、密码、状态等
+   - 关系：一个容器由一个学生创建，属于一个课程，使用一个镜像
+
+#### 3.3.2 多对多关系处理
+
+1. **课程与资源的多对多关系**
+   - 通过CourseResource关联表实现
+   - 一个资源可以被多个课程引用，一个课程可以包含多个资源
+   - 这种设计避免资源重复上传，节省存储空间
+
+2. **课程与镜像的多对多关系**
+   - 通过CourseImage关联表实现
+   - 一个镜像可以在多个课程中使用，一个课程可以提供多个镜像版本
+
+#### 3.3.3 级联删除设计
+
+为了支持"删除镜像模板时，系统会同步删除所有课程中使用该镜像的学生的镜像实例"的需求，在数据库设计中添加了级联删除约束：
+
+1. **CourseImage表**：当删除Image记录时，自动删除相关的CourseImage记录
+   ```sql
+   FOREIGN KEY (image_id) REFERENCES Image(image_id) ON DELETE CASCADE
+   ```
+
+2. **Container表**：当删除Image记录时，自动删除使用该镜像的Container记录
+   ```sql
+   FOREIGN KEY (image_id) REFERENCES Image(image_id) ON DELETE CASCADE
+   ```
+
+#### 3.3.4 首页轮播图功能支持
+
+为了支持"轮播图：每天更新并展示当前已选人数最多的几个课程"的需求，设计了以下解决方案：
+
+1. **数据库视图**：创建PopularCourses视图，计算每个课程的选课人数并按人数降序排序
+
+2. **缓存表**：创建PopularCoursesCache表，存储热门课程信息，通过定时任务更新
+
+3. **更新机制**：应用代码设置定时任务，每天执行以下操作：
+   - 清空PopularCoursesCache表
+   - 从PopularCourses视图获取热门课程数据
+   - 将结果插入PopularCoursesCache表
+
+这种设计既满足了功能需求，又优化了性能，避免了每次访问首页都执行复杂的统计查询。
+
+## 4. 用户权限与页面设计
+
+### 4.1 用户权限设计
+
+#### 4.1.1 教师权限
+- 管理个人信息
+- 创建、编辑、删除课程
+- 上传、编辑、删除教学资源
+- 发布、编辑、删除课程通知
+- 管理课程镜像
+- 增加、修改、删除学生启动的镜像
+
+#### 4.1.2 学生权限
+- 管理个人信息
+- 浏览、搜索、选修课程
+- 查看、下载学习资料
+- 使用Linux环境页面管理个人学习环境
+
+#### 4.1.3 管理员权限
+- 管理所有用户信息
+- 管理系统配置
+- 管理所有Docker容器
+- 管理镜像
+- 查看和管理学生环境
+
+### 4.2 页面设计
+
+#### 4.2.1 公共页面
+1. **登录页面**：用户登录界面
+2. **注册页面**：用户注册界面
+3. **个人信息页面**：用户查看、编辑个人信息界面
+
+#### 4.2.2 教师页面
+1. **教师主页**：显示教师课程、资源等概览
+2. **资源管理页面**：上传、编辑、删除教学资源
+3. **镜像管理页面**：创建、编辑、删除镜像
+4. **课程管理页面**：创建、编辑、删除课程
+   1. **通知管理页面**：发布、编辑、删除课程通知
+   2. **学生环境管理页面**：查看和修改学生环境配置
+
+#### 4.2.3 学生页面
+1. **学生主页**：
+   1. 热门课程轮播图
+   2. 最新课程（点击更多进入2. 课程列表页面）
+   3. **课程列表页面**：浏览、搜索、选修课程
+   4. **课程详情页面**：查看课程详情、资源列表、通知列表
+2. **资源页面**：查看、下载学习资料
+3. **Linux环境使用页面**：查看已创建的环境，或者新建环境。只能选择老师提供好的环境版本进行启动，获取SSH登录信息，连接到容器进行学习。
+
+#### 4.2.4 管理员页面
+1. **管理员主页**：显示系统概览
+2. **用户管理页面**：查看、编辑、删除用户信息
+   1. **学生环境查看页面**：查看所有学生环境配置
+3. **容器管理页面**：查看、管理所有Docker容器
+4. **镜像管理页面**：查看、管理所有镜像
+
+## 5. 技术实现方案
+
+### 5.1 前端技术栈
+- **HTML5/CSS3/JavaScript**：基础前端技术
+- **Bootstrap**：响应式UI框架
+
+### 5.2 后端技术栈
+- **C++**：核心业务逻辑实现
+- **Crow**：C++的轻量级Web框架
+- **SQLite**：嵌入式关系型数据库
+- **Docker API**：管理Docker容器
+- **JSON**：数据交换格式
+- **spdlog**：C++的日志库
+
+### 5.3 Docker容器配置
+- **基础镜像**：Ubuntu和CentOS官方镜像
+- **预安装软件**：SSH服务器、基础开发工具
+- **安全配置**：限制容器资源使用
+
+### 5.4 系统部署方案
+- **单机部署**：将系统部署在一台服务器上，同时运行Web服务、数据库服务和Docker服务
