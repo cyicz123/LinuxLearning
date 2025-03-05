@@ -8,6 +8,7 @@ interface CourseCarouselProps {
 
 export default function CourseCarousel({ courses }: CourseCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   // 自动轮播
   useEffect(() => {
@@ -23,7 +24,7 @@ export default function CourseCarousel({ courses }: CourseCarouselProps) {
   // 如果没有课程，显示占位符
   if (courses.length === 0) {
     return (
-      <div className="relative w-full h-64 bg-gray-200 rounded-lg animate-pulse">
+      <div className="relative w-full h-80 bg-gray-200 rounded-lg animate-pulse">
         <div className="absolute inset-0 flex items-center justify-center">
           <p className="text-gray-500">加载热门课程中...</p>
         </div>
@@ -32,37 +33,38 @@ export default function CourseCarousel({ courses }: CourseCarouselProps) {
   }
 
   return (
-    <div className="relative w-full h-64 overflow-hidden rounded-lg">
+    <div className="relative w-full h-80 overflow-hidden rounded-lg shadow-lg">
       {/* 轮播图内容 */}
       <div
         className="flex transition-transform duration-500 ease-in-out h-full"
         style={{ transform: `translateX(-${currentIndex * 100}%)` }}
       >
-        {courses.map((course) => (
-          <div
+        {courses.map((course, index) => (
+          <Link
             key={course.course_id}
-            className="w-full h-full flex-shrink-0 relative"
+            to={`/course/${course.course_id}`}
+            className="w-full h-full flex-shrink-0 relative block"
+            onMouseEnter={() => setHoveredIndex(index)}
+            onMouseLeave={() => setHoveredIndex(null)}
           >
             <img
               src={course.cover_image || '/default-course-cover.jpg'}
               alt={course.course_name}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover transition-transform duration-300"
             />
-            <div className="absolute inset-0 bg-black bg-opacity-40 flex flex-col justify-end p-6">
+
+            {/* 默认显示的课程名称 */}
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-6">
               <h3 className="text-white text-2xl font-bold">{course.course_name}</h3>
-              <p className="text-white text-sm mt-2">{course.course_description}</p>
-              <div className="flex justify-between items-center mt-3">
-                <span className="text-white text-sm">讲师: {course.teacher_name}</span>
-                <span className="text-white text-sm">已选人数: {course.enrollment_count}</span>
-              </div>
-              <Link
-                to={`/course/${course.course_id}`}
-                className="mt-3 inline-block bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700"
-              >
-                查看详情
-              </Link>
             </div>
-          </div>
+
+            {/* 鼠标悬停时只显示课程描述 */}
+            {hoveredIndex === index && (
+              <div className="absolute inset-0 bg-black bg-opacity-70 flex flex-col justify-center p-6 transition-opacity duration-300">
+                <p className="text-white text-lg line-clamp-6">{course.course_description}</p>
+              </div>
+            )}
+          </Link>
         ))}
       </div>
 
@@ -85,8 +87,11 @@ export default function CourseCarousel({ courses }: CourseCarouselProps) {
       {courses.length > 1 && (
         <>
           <button
-            className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-30 text-white p-2 rounded-full hover:bg-opacity-50"
-            onClick={() => setCurrentIndex((prevIndex) => (prevIndex - 1 + courses.length) % courses.length)}
+            className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-30 text-white p-2 rounded-full hover:bg-opacity-50 transition-colors"
+            onClick={(e) => {
+              e.preventDefault();
+              setCurrentIndex((prevIndex) => (prevIndex - 1 + courses.length) % courses.length);
+            }}
             aria-label="Previous slide"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -94,8 +99,11 @@ export default function CourseCarousel({ courses }: CourseCarouselProps) {
             </svg>
           </button>
           <button
-            className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-30 text-white p-2 rounded-full hover:bg-opacity-50"
-            onClick={() => setCurrentIndex((prevIndex) => (prevIndex + 1) % courses.length)}
+            className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-30 text-white p-2 rounded-full hover:bg-opacity-50 transition-colors"
+            onClick={(e) => {
+              e.preventDefault();
+              setCurrentIndex((prevIndex) => (prevIndex + 1) % courses.length);
+            }}
             aria-label="Next slide"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
