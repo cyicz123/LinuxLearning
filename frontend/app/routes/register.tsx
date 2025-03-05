@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
+import { apiClient } from '../services/apiClient';
 
 export default function Register() {
   const [username, setUsername] = useState('');
@@ -25,25 +26,21 @@ export default function Register() {
     setError('');
 
     try {
-      // 调用注册API
-      const response = await fetch('/api/v1/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username, password, email, role }),
-      });
+      // 使用apiClient调用注册API
+      await apiClient.post<{ user_id: number; username: string }>(
+        'auth/register',
+        { username, password, email, role },
+        { requireAuth: false }
+      );
 
-      const data = await response.json();
-
-      if (data.code === 200) {
-        // 注册成功，跳转到登录页面
-        navigate('/login', { state: { message: '注册成功，请登录' } });
-      } else {
-        setError(data.message || '注册失败，请稍后再试');
-      }
+      // 注册成功，跳转到登录页面
+      navigate('/login', { state: { message: '注册成功，请登录' } });
     } catch (err) {
-      setError('注册请求失败，请稍后再试');
+      if (err instanceof Error) {
+        setError(err.message || '注册失败，请稍后再试');
+      } else {
+        setError('注册请求失败，请稍后再试');
+      }
       console.error(err);
     } finally {
       setIsLoading(false);

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Form, useNavigate, useLocation } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
+import { apiClient } from '../services/apiClient';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -22,34 +23,34 @@ export default function Login() {
     setError('');
 
     try {
-      // 这里应该调用实际的登录API
-      const response = await fetch('/api/v1/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username, password }),
-      });
-
-      const data = await response.json();
-
-      if (data.code === 200) {
-        // 使用AuthContext进行登录
-        auth.login(data.data.token, data.data.user);
-
-        // 根据角色跳转到不同页面
-        if (data.data.user.role === 'admin') {
-          navigate('/admin');
-        } else if (data.data.user.role === 'teacher') {
-          navigate('/teacher');
-        } else {
-          navigate('/student');
+      // 使用apiClient调用登录API
+      const data = await apiClient.post<{
+        token: string;
+        user: {
+          user_id: number;
+          username: string;
+          role: string;
+          avatar?: string;
         }
+      }>('auth/login', { username, password }, { requireAuth: false });
+
+      // 使用AuthContext进行登录
+      auth.login(data.token, data.user);
+
+      // 根据角色跳转到不同页面
+      if (data.user.role === 'admin') {
+        navigate('/admin');
+      } else if (data.user.role === 'teacher') {
+        navigate('/teacher');
       } else {
-        setError(data.message || '登录失败，请检查用户名和密码');
+        navigate('/student');
       }
     } catch (err) {
-      setError('登录请求失败，请稍后再试');
+      if (err instanceof Error) {
+        setError(err.message || '登录失败，请检查用户名和密码');
+      } else {
+        setError('登录请求失败，请稍后再试');
+      }
       console.error(err);
     } finally {
       setIsLoading(false);
