@@ -43,7 +43,8 @@ export default function Login() {
       } else if (data.user.role === 'teacher') {
         navigate('/teacher');
       } else {
-        navigate('/student');
+        // 学生角色跳转到首页
+        navigate('/');
       }
     } catch (err) {
       if (err instanceof Error) {
