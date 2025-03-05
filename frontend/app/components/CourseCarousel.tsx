@@ -48,7 +48,7 @@ export default function CourseCarousel({ courses }: CourseCarouselProps) {
             onMouseLeave={() => setHoveredIndex(null)}
           >
             <img
-              src={course.cover_image || '/default-course-cover.jpg'}
+              src={course.cover_image || '/Linux.png'}
               alt={course.course_name}
               className="w-full h-full object-cover transition-transform duration-300"
             />

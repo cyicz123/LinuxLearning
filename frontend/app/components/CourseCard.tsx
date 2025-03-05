@@ -19,7 +19,7 @@ export default function CourseCard({
     >
       <div className="h-48 overflow-hidden">
         <img
-          src={cover_image || '/default-course-cover.jpg'}
+          src={cover_image || '/Linux.png'}
           alt={course_name}
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
         />
