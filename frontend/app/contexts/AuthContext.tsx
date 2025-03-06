@@ -7,6 +7,7 @@ export interface User {
   role: string;
   avatar?: string;
   email?: string;
+  bio?: string;
 }
 
 // 定义认证上下文类型

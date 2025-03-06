@@ -20,7 +20,11 @@ export const apiClient = {
 
     // 默认请求头
     const headers = new Headers(fetchOptions.headers);
-    headers.set('Content-Type', 'application/json');
+
+    // 如果没有指定Content-Type，默认为application/json
+    if (!headers.has('Content-Type') && !fetchOptions.body?.toString().includes('FormData')) {
+      headers.set('Content-Type', 'application/json');
+    }
 
     // 如果需要认证，添加token
     if (requireAuth) {
@@ -63,12 +67,31 @@ export const apiClient = {
     });
   },
 
+  // 表单数据POST请求
+  postFormData<T>(endpoint: string, formData: FormData, options: RequestOptions = {}): Promise<T> {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: 'POST',
+      body: formData,
+      // 注意：不要手动设置Content-Type，让浏览器自动设置，包含boundary
+    });
+  },
+
   // PUT请求
   put<T>(endpoint: string, data: any, options: RequestOptions = {}): Promise<T> {
     return this.request<T>(endpoint, {
       ...options,
       method: 'PUT',
       body: JSON.stringify(data)
+    });
+  },
+
+  // 表单数据PUT请求
+  putFormData<T>(endpoint: string, formData: FormData, options: RequestOptions = {}): Promise<T> {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: 'PUT',
+      body: formData
     });
   },
 
