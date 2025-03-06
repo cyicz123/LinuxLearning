@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Form, useNavigate, useLocation } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { apiClient } from '../services/apiClient';
+import type { User } from '../contexts/AuthContext';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -26,12 +27,7 @@ export default function Login() {
       // 使用apiClient调用登录API
       const data = await apiClient.post<{
         token: string;
-        user: {
-          user_id: number;
-          username: string;
-          role: string;
-          avatar?: string;
-        }
+        user: User
       }>('auth/login', { username, password }, { requireAuth: false });
 
       // 使用AuthContext进行登录

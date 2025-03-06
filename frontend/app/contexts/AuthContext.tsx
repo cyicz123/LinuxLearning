@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 // 定义用户类型
-interface User {
+export interface User {
   user_id: number;
   username: string;
   role: string;
   avatar?: string;
+  email?: string;
 }
 
 // 定义认证上下文类型

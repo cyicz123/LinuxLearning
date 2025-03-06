@@ -58,19 +58,18 @@ export default function CourseList({
           ))}
         </div>
 
-        {/* 右侧半透明遮罩，仅在桌面端显示 */}
+        {/* 右侧半透明遮罩，仅在桌面端显示
         {hasMore && (
-          <div className="hidden md:block absolute right-0 top-0 bottom-0 w-1/4 bg-gradient-to-r from-transparent to-gray-100 pointer-events-none">
-            <div className="absolute right-0 top-1/2 transform -translate-y-1/2 -translate-x-1/2 flex flex-col items-center justify-center">
-              <Link
-                to={viewAllLink}
-                className="bg-indigo-600 text-white px-4 py-2 rounded-full shadow-md hover:bg-indigo-700 transition-colors duration-300 pointer-events-auto"
-              >
-                查看全部
-              </Link>
+          <Link
+            to={viewAllLink}
+            className="hidden md:block absolute right-0 top-0 bottom-0 w-1/4 bg-gradient-to-r from-transparent to-gray-100"
+          >
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
+              <p className="text-gray-800 font-medium text-center mb-2">更多课程</p>
+              <p className="text-gray-600 text-sm text-center">向右滑动查看全部 →</p>
             </div>
-          </div>
-        )}
+          </Link>
+        )} */}
       </div>
     </div>
   );
