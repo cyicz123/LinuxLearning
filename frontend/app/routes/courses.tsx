@@ -5,7 +5,14 @@ import type { Course } from '../services/courseService';
 import CourseCard from '../components/CourseCard';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
-import { Select } from '../components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '../components/ui/select';
+import Navbar from '../components/Navbar';
 
 export default function CoursesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -158,70 +165,78 @@ export default function CoursesPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">课程列表</h1>
+    <div className="min-h-screen flex flex-col bg-gray-50">
+      <Navbar />
 
-      {/* 搜索和筛选区域 */}
-      <div className="bg-white rounded-lg shadow-md p-4 mb-8">
-        <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1">
-            <Input
-              type="text"
-              placeholder="搜索课程名称或描述"
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-              className="w-full"
-            />
-          </div>
+      <div className="container mx-auto px-4 py-8">
+        {/* <div className="bg-white shadow-sm rounded-lg p-4 mb-8">
+          <h1 className="text-2xl font-bold text-gray-800">课程列表</h1>
+        </div> */}
 
-          <div className="w-full md:w-48">
-            <Select
-              value={`${sortBy}-${sortOrder}`}
-              onValueChange={handleSortChange}
-            >
-              <option value="created_at-desc">最新发布</option>
-              <option value="created_at-asc">最早发布</option>
-              <option value="enrollment_count-desc">选课人数多</option>
-              <option value="enrollment_count-asc">选课人数少</option>
-              <option value="course_name-asc">课程名称 A-Z</option>
-              <option value="course_name-desc">课程名称 Z-A</option>
-            </Select>
-          </div>
-
-          <Button type="submit" className="md:w-24">搜索</Button>
-        </form>
-      </div>
-
-      {/* 课程列表 */}
-      {loading ? (
-        <div className="text-center py-12">
-          <p className="text-gray-500">加载中...</p>
-        </div>
-      ) : courses.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg shadow-md">
-          <p className="text-gray-500">没有找到符合条件的课程</p>
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {courses.map((course) => (
-              <CourseCard key={course.course_id} {...course} />
-            ))}
-          </div>
-
-          {/* 分页控件 */}
-          {totalPages > 1 && (
-            <div className="flex justify-center mt-8">
-              {renderPagination()}
+        {/* 搜索和筛选区域 */}
+        <div className="bg-white rounded-lg shadow-md p-4 mb-8">
+          <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <Input
+                type="text"
+                placeholder="搜索课程名称或描述"
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                className="w-full"
+              />
             </div>
-          )}
 
-          {/* 显示总数 */}
-          <div className="text-center mt-4 text-gray-500">
-            共 {total} 门课程，当前显示第 {currentPage} 页
+            <div className="w-full md:w-48">
+              <Select value={`${sortBy}-${sortOrder}`} onValueChange={handleSortChange}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="排序方式" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="created_at-desc">最新发布</SelectItem>
+                  <SelectItem value="created_at-asc">最早发布</SelectItem>
+                  <SelectItem value="enrollment_count-desc">选课人数多</SelectItem>
+                  <SelectItem value="enrollment_count-asc">选课人数少</SelectItem>
+                  <SelectItem value="course_name-asc">课程名称 A-Z</SelectItem>
+                  <SelectItem value="course_name-desc">课程名称 Z-A</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Button type="submit" className="md:w-24">搜索</Button>
+          </form>
+        </div>
+
+        {/* 课程列表 */}
+        {loading ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500">加载中...</p>
           </div>
-        </>
-      )}
+        ) : courses.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-lg shadow-md">
+            <p className="text-gray-500">没有找到符合条件的课程</p>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {courses.map((course) => (
+                <CourseCard key={course.course_id} {...course} />
+              ))}
+            </div>
+
+            {/* 分页控件 */}
+            {totalPages > 1 && (
+              <div className="flex justify-center mt-8">
+                {renderPagination()}
+              </div>
+            )}
+
+            {/* 显示总数 */}
+            <div className="text-center mt-4 text-gray-500">
+              共 {total} 门课程，当前显示第 {currentPage} 页
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 } 
