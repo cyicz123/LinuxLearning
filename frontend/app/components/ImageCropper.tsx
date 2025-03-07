@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import Cropper from 'react-cropper';
 import 'cropperjs/dist/cropper.css';
+import type { ReactCropperElement } from 'react-cropper';
 
 interface ImageCropperProps {
   image: string;
@@ -15,14 +16,15 @@ export default function ImageCropper({
   onCropComplete,
   onCancel
 }: ImageCropperProps) {
-  const cropperRef = useRef<Cropper>(null);
+  const cropperRef = useRef<ReactCropperElement>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleCrop = () => {
-    if (cropperRef.current && typeof cropperRef.current.getCroppedCanvas === 'function') {
+    const cropper = cropperRef.current?.cropper;
+    if (cropper && typeof cropper.getCroppedCanvas === 'function') {
       setIsLoading(true);
       try {
-        const croppedCanvas = cropperRef.current.getCroppedCanvas({
+        const croppedCanvas = cropper.getCroppedCanvas({
           minWidth: 256,
           minHeight: 256,
           maxWidth: 4096,
