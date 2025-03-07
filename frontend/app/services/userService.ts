@@ -46,4 +46,21 @@ export async function updateUserProfile(
     console.error('更新用户信息失败', error);
     throw new Error('更新用户信息失败，请重试');
   }
+}
+
+/**
+ * 修改用户密码
+ * @param oldPassword 旧密码
+ * @param newPassword 新密码
+ */
+export async function changePassword(oldPassword: string, newPassword: string): Promise<void> {
+  try {
+    await apiClient.put<void>('user/password', {
+      old_password: oldPassword,
+      new_password: newPassword
+    });
+  } catch (error) {
+    console.error('修改密码失败', error);
+    throw new Error('修改密码失败，请检查旧密码是否正确');
+  }
 } 
