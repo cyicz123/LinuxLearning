@@ -22,6 +22,7 @@ export default function CoursesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(12);
   const [keyword, setKeyword] = useState('');
+  const [inputValue, setInputValue] = useState('');
   const [sortBy, setSortBy] = useState<'created_at' | 'enrollment_count' | 'course_name'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
@@ -36,6 +37,7 @@ export default function CoursesPage() {
     setCurrentPage(page);
     setPageSize(limit);
     setKeyword(keywordParam);
+    setInputValue(keywordParam);
     setSortBy(sortByParam);
     setSortOrder(sortOrderParam);
   }, [searchParams]);
@@ -84,7 +86,8 @@ export default function CoursesPage() {
   // 处理搜索
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    setCurrentPage(1); // 重置到第一页
+    setKeyword(inputValue);
+    setCurrentPage(1);
   };
 
   // 处理排序变化
@@ -180,8 +183,8 @@ export default function CoursesPage() {
               <Input
                 type="text"
                 placeholder="搜索课程名称或描述"
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
                 className="w-full"
               />
             </div>
