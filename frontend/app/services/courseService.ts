@@ -19,6 +19,30 @@ interface ApiResponse<T> {
   data: T;
 }
 
+// 课程详情接口
+export interface CourseDetail {
+  course_id: number;
+  course_name: string;
+  course_description: string;
+  cover_image: string;
+  teacher_id: number;
+  teacher_name: string;
+  enrollment_count: number;
+  is_enrolled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// 课程通知接口
+export interface Notification {
+  notification_id: number;
+  title: string;
+  content: string;
+  teacher_name: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // 获取热门课程
 export async function getPopularCourses(limit: number = 5): Promise<Course[]> {
   try {
@@ -116,5 +140,63 @@ export async function getCourses(params: {
       page: 1,
       limit: 10
     };
+  }
+}
+
+// 获取课程详情
+export async function getCourseDetail(courseId: number): Promise<CourseDetail | null> {
+  try {
+    const response = await apiClient.get<CourseDetail>(`courses/${courseId}`);
+    return response;
+  } catch (error) {
+    console.error('获取课程详情出错:', error);
+    return null;
+  }
+}
+
+// 获取课程通知列表
+export async function getCourseNotifications(
+  courseId: number,
+  page: number = 1,
+  limit: number = 10
+): Promise<{
+  notifications: Notification[];
+  total: number;
+  page: number;
+  limit: number;
+} | null> {
+  try {
+    const response = await apiClient.get<{
+      notifications: Notification[];
+      total: number;
+      page: number;
+      limit: number;
+    }>(`courses/${courseId}/notifications?page=${page}&limit=${limit}`);
+    return response;
+  } catch (error) {
+    console.error('获取课程通知列表出错:', error);
+    return null;
+  }
+}
+
+// 选课
+export async function enrollCourse(courseId: number): Promise<boolean> {
+  try {
+    await apiClient.post(`courses/${courseId}/enroll`, {});
+    return true;
+  } catch (error) {
+    console.error('选课失败:', error);
+    return false;
+  }
+}
+
+// 退课
+export async function unenrollCourse(courseId: number): Promise<boolean> {
+  try {
+    await apiClient.post(`courses/${courseId}/unenroll`, {});
+    return true;
+  } catch (error) {
+    console.error('退课失败:', error);
+    return false;
   }
 } 

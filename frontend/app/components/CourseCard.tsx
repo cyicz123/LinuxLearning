@@ -14,7 +14,7 @@ export default function CourseCard({
 }: CourseCardProps) {
   return (
     <Link
-      to={`/course/${course_id}`}
+      to={`/courses/${course_id}`}
       className="block bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 group relative"
     >
       <div className="h-48 overflow-hidden">

@@ -42,7 +42,7 @@ export default function CourseCarousel({ courses }: CourseCarouselProps) {
         {courses.map((course, index) => (
           <Link
             key={course.course_id}
-            to={`/course/${course.course_id}`}
+            to={`/courses/${course.course_id}`}
             className="w-full h-full flex-shrink-0 relative block"
             onMouseEnter={() => setHoveredIndex(index)}
             onMouseLeave={() => setHoveredIndex(null)}
