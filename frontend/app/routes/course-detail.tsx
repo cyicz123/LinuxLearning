@@ -99,8 +99,8 @@ export default function CourseDetailPage() {
       case 'resources':
         navigate(`/courses/${courseId}/resources`);
         break;
-      case 'images':
-        navigate(`/courses/${courseId}/images`);
+      case 'containers':
+        navigate(`/containers?courseId=${courseId}`);
         break;
       default:
         navigate(`/courses/${courseId}`);
@@ -111,8 +111,8 @@ export default function CourseDetailPage() {
   useEffect(() => {
     if (location.pathname.includes('/resources')) {
       setCurrentTab('resources');
-    } else if (location.pathname.includes('/images')) {
-      setCurrentTab('images');
+    } else if (location.pathname.includes('/containers')) {
+      setCurrentTab('containers');
     } else {
       setCurrentTab('details');
     }
@@ -340,7 +340,7 @@ export default function CourseDetailPage() {
             {/* 其他标签页内容将通过路由渲染 */}
             {currentTab !== 'details' && (
               <div className="text-center py-4 text-gray-500">
-                正在加载{currentTab === 'resources' ? '资源' : '镜像'}页面...
+                正在加载{currentTab === 'resources' ? '资源' : '容器'}页面...
               </div>
             )}
           </div>

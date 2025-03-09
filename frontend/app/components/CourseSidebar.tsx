@@ -26,8 +26,8 @@ const defaultItems: SidebarItem[] = [
     icon: <FileText className="h-5 w-5" />
   },
   {
-    id: 'images',
-    label: '镜像',
+    id: 'containers',
+    label: '容器',
     icon: <Server className="h-5 w-5" />
   }
 ];

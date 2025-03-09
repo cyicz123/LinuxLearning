@@ -9,5 +9,6 @@ export default [
   route("/courses", "routes/courses.tsx"),
   route("/courses/:courseId", "routes/course-detail.tsx"),
   route("/courses/:courseId/resources", "routes/course-resources.tsx"),
-  route("/courses/:courseId/images", "routes/course-images.tsx")
+  route("/courses/:courseId/images", "routes/course-images.tsx"),
+  route("/containers", "routes/containers.tsx")
 ] satisfies RouteConfig;
