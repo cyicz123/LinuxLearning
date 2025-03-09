@@ -78,8 +78,10 @@ export default function CourseDetailPage() {
       }
     };
 
-    fetchNotifications();
-  }, [courseId, currentPage, pageSize]);
+    if (currentTab === 'details') {
+      fetchNotifications();
+    }
+  }, [courseId, currentPage, pageSize, currentTab]);
 
   // 处理通知分页变化
   const handleNotificationPageChange = (page: number) => {
@@ -338,7 +340,7 @@ export default function CourseDetailPage() {
             {/* 其他标签页内容将通过路由渲染 */}
             {currentTab !== 'details' && (
               <div className="text-center py-4 text-gray-500">
-                请等待页面加载...
+                正在加载{currentTab === 'resources' ? '资源' : '镜像'}页面...
               </div>
             )}
           </div>

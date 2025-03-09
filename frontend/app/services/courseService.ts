@@ -43,6 +43,17 @@ export interface Notification {
   updated_at: string;
 }
 
+// 课程资源接口
+export interface Resource {
+  resource_id: number;
+  resource_name: string;
+  resource_description: string;
+  resource_type: 'document' | 'video' | 'archive' | 'other';
+  size: number;
+  download_url: string;
+  created_at: string;
+}
+
 // 获取热门课程
 export async function getPopularCourses(limit: number = 5): Promise<Course[]> {
   try {
@@ -198,5 +209,30 @@ export async function unenrollCourse(courseId: number): Promise<boolean> {
   } catch (error) {
     console.error('退课失败:', error);
     return false;
+  }
+}
+
+// 获取课程资源列表
+export async function getCourseResources(
+  courseId: number,
+  page: number = 1,
+  limit: number = 10
+): Promise<{
+  resources: Resource[];
+  total: number;
+  page: number;
+  limit: number;
+} | null> {
+  try {
+    const response = await apiClient.get<{
+      resources: Resource[];
+      total: number;
+      page: number;
+      limit: number;
+    }>(`courses/${courseId}/resources?page=${page}&limit=${limit}`);
+    return response;
+  } catch (error) {
+    console.error('获取课程资源列表出错:', error);
+    return null;
   }
 } 
