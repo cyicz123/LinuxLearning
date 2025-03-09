@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, FileText, Server, Menu } from 'lucide-react';
+import { Bell, FileText, Server, Menu, ChevronUp } from 'lucide-react';
 
 interface SidebarItem {
   id: string;
@@ -11,6 +11,7 @@ interface CourseSidebarProps {
   currentTab: string;
   onTabChange: (tabId: string) => void;
   items?: SidebarItem[];
+  className?: string;
 }
 
 const defaultItems: SidebarItem[] = [
@@ -34,7 +35,8 @@ const defaultItems: SidebarItem[] = [
 export default function CourseSidebar({
   currentTab,
   onTabChange,
-  items = defaultItems
+  items = defaultItems,
+  className = ''
 }: CourseSidebarProps) {
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -44,11 +46,20 @@ export default function CourseSidebar({
     setIsMobileMenuOpen(false);
   };
 
+  // 回到顶部的函数
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+    setIsMobileMenuOpen(false); // 点击后关闭移动端菜单
+  };
+
   return (
     <>
       {/* 桌面侧边栏 */}
       <div
-        className={`transition-all duration-300 ease-in-out hidden md:block ${sidebarExpanded ? 'w-48' : 'w-16'} shrink-0 bg-white rounded-lg shadow-md`}
+        className={`transition-all duration-300 ease-in-out hidden md:block ${sidebarExpanded ? 'w-48' : 'w-16'} shrink-0 bg-white rounded-lg shadow-md ${className}`}
         onMouseEnter={() => setSidebarExpanded(true)}
         onMouseLeave={() => setSidebarExpanded(false)}
       >
@@ -85,6 +96,16 @@ export default function CourseSidebar({
                   </button>
                 </li>
               ))}
+              {/* 移动端回到顶部按钮 */}
+              <li>
+                <button
+                  onClick={scrollToTop}
+                  className="flex items-center w-full p-2 rounded-md hover:bg-gray-100 transition-colors"
+                >
+                  <ChevronUp className="h-5 w-5" />
+                  <span className="ml-3">回到顶部</span>
+                </button>
+              </li>
             </ul>
           </div>
         ) : null}

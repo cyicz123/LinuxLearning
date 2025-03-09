@@ -14,6 +14,7 @@ import Navbar from '../components/Navbar';
 import { toast } from 'sonner';
 import CourseSidebar from '../components/CourseSidebar';
 import Pagination from '../components/Pagination';
+import ScrollToTop from '../components/ScrollToTop';
 
 export default function CourseDetailPage() {
   const { courseId } = useParams<{ courseId: string }>();
@@ -202,11 +203,26 @@ export default function CourseDetailPage() {
 
       <div className="container mx-auto py-8">
         <div className="flex flex-col md:flex-row gap-6 relative">
-          {/* 使用抽取的侧边栏组件 */}
-          <CourseSidebar
-            currentTab={currentTab}
-            onTabChange={handleTabChange}
-          />
+          {/* 桌面端侧边栏和回到顶部按钮的容器 */}
+          <div className="hidden md:flex flex-col gap-4 sticky top-6 h-fit">
+            <CourseSidebar
+              currentTab={currentTab}
+              onTabChange={handleTabChange}
+              className="h-fit"
+            />
+            <ScrollToTop
+              className="self-center"
+              showAfter={400}
+            />
+          </div>
+
+          {/* 移动端只显示侧边栏 */}
+          <div className="md:hidden">
+            <CourseSidebar
+              currentTab={currentTab}
+              onTabChange={handleTabChange}
+            />
+          </div>
 
           {/* 主内容区 */}
           <div className="flex-1">
