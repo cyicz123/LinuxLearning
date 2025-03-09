@@ -13,6 +13,7 @@ import {
   SelectValue
 } from '../components/ui/select';
 import Navbar from '../components/Navbar';
+import Pagination from '../components/Pagination';
 
 export default function CoursesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -109,62 +110,13 @@ export default function CoursesPage() {
 
   // 生成分页按钮
   const renderPagination = () => {
-    const pages = [];
-    const maxVisiblePages = 5;
-
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-    if (endPage - startPage + 1 < maxVisiblePages) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1);
-    }
-
-    // 首页按钮
-    if (startPage > 1) {
-      pages.push(
-        <Button
-          key="first"
-          variant="outline"
-          size="sm"
-          onClick={() => handlePageChange(1)}
-          className="mx-1"
-        >
-          首页
-        </Button>
-      );
-    }
-
-    // 页码按钮
-    for (let i = startPage; i <= endPage; i++) {
-      pages.push(
-        <Button
-          key={i}
-          variant={i === currentPage ? "default" : "outline"}
-          size="sm"
-          onClick={() => handlePageChange(i)}
-          className="mx-1"
-        >
-          {i}
-        </Button>
-      );
-    }
-
-    // 末页按钮
-    if (endPage < totalPages) {
-      pages.push(
-        <Button
-          key="last"
-          variant="outline"
-          size="sm"
-          onClick={() => handlePageChange(totalPages)}
-          className="mx-1"
-        >
-          末页
-        </Button>
-      );
-    }
-
-    return pages;
+    return (
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={handlePageChange}
+      />
+    );
   };
 
   return (

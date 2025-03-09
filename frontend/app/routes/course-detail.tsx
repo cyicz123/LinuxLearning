@@ -13,6 +13,7 @@ import {
 import Navbar from '../components/Navbar';
 import { toast } from 'sonner';
 import CourseSidebar from '../components/CourseSidebar';
+import Pagination from '../components/Pagination';
 
 export default function CourseDetailPage() {
   const { courseId } = useParams<{ courseId: string }>();
@@ -25,6 +26,12 @@ export default function CourseDetailPage() {
   const [enrollLoading, setEnrollLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentTab, setCurrentTab] = useState('details');
+
+  // 通知分页状态
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalNotifications, setTotalNotifications] = useState(0);
+  const [pageSize, setPageSize] = useState(5);
+  const [totalPages, setTotalPages] = useState(1);
 
   // 获取课程详情
   useEffect(() => {
@@ -57,9 +64,11 @@ export default function CourseDetailPage() {
 
       try {
         setNotificationsLoading(true);
-        const data = await getCourseNotifications(parseInt(courseId));
+        const data = await getCourseNotifications(parseInt(courseId), currentPage, pageSize);
         if (data) {
           setNotifications(data.notifications);
+          setTotalNotifications(data.total);
+          setTotalPages(Math.ceil(data.total / pageSize));
         }
       } catch (err) {
         console.error('获取通知列表失败:', err);
@@ -69,7 +78,12 @@ export default function CourseDetailPage() {
     };
 
     fetchNotifications();
-  }, [courseId]);
+  }, [courseId, currentPage, pageSize]);
+
+  // 处理通知分页变化
+  const handleNotificationPageChange = (page: number) => {
+    setCurrentPage(page);
+  };
 
   // 处理标签切换
   const handleTabChange = (value: string) => {
@@ -265,22 +279,38 @@ export default function CourseDetailPage() {
                     {notificationsLoading ? (
                       <p className="text-center py-4 text-gray-500">加载通知中...</p>
                     ) : notifications.length > 0 ? (
-                      <div className="space-y-4">
-                        {notifications.map((notification) => (
-                          <div key={notification.notification_id} className="border-b pb-4 last:border-b-0">
-                            <div className="flex justify-between items-start">
-                              <h3 className="font-medium">{notification.title}</h3>
-                              <span className="text-sm text-gray-500">
-                                {new Date(notification.created_at).toLocaleDateString()}
-                              </span>
+                      <>
+                        <div className="space-y-4">
+                          {notifications.map((notification) => (
+                            <div key={notification.notification_id} className="border-b pb-4 last:border-b-0">
+                              <div className="flex justify-between items-start">
+                                <h3 className="font-medium">{notification.title}</h3>
+                                <span className="text-sm text-gray-500">
+                                  {new Date(notification.created_at).toLocaleDateString()}
+                                </span>
+                              </div>
+                              <p className="mt-2 text-gray-700 whitespace-pre-line">{notification.content}</p>
+                              <div className="mt-2 text-sm text-gray-500">
+                                发布者: {notification.teacher_name}
+                              </div>
                             </div>
-                            <p className="mt-2 text-gray-700 whitespace-pre-line">{notification.content}</p>
-                            <div className="mt-2 text-sm text-gray-500">
-                              发布者: {notification.teacher_name}
+                          ))}
+                        </div>
+
+                        {/* 分页控件 */}
+                        {totalPages > 1 && (
+                          <div className="mt-6">
+                            <Pagination
+                              currentPage={currentPage}
+                              totalPages={totalPages}
+                              onPageChange={handleNotificationPageChange}
+                            />
+                            <div className="text-center mt-2 text-sm text-gray-500">
+                              共 {totalNotifications} 条通知，当前显示第 {currentPage} 页
                             </div>
                           </div>
-                        ))}
-                      </div>
+                        )}
+                      </>
                     ) : (
                       <p className="text-center py-4 text-gray-500">暂无通知</p>
                     )}

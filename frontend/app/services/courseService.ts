@@ -158,7 +158,7 @@ export async function getCourseDetail(courseId: number): Promise<CourseDetail | 
 export async function getCourseNotifications(
   courseId: number,
   page: number = 1,
-  limit: number = 10
+  limit: number = 5
 ): Promise<{
   notifications: Notification[];
   total: number;
