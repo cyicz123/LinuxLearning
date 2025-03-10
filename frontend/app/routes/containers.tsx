@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { toast } from 'sonner';
-import { Play, Square, RefreshCw, Trash2, Copy, Plus } from 'lucide-react';
+import { Play, Square, RefreshCw, Trash2, Copy, Plus, X } from 'lucide-react';
 
-import { type Container, getContainers, startContainer, stopContainer, restartContainer, deleteContainer } from '../services/containerService';
+import { type Container, getContainers, startContainer, stopContainer, restartContainer, deleteContainer, createContainer } from '../services/containerService';
+import { type Image, getCourseImages } from '../services/imageService';
 import { Button } from '../components/ui/button';
 import {
   Table,
@@ -28,19 +29,63 @@ import {
   AlertDialogTrigger,
 } from '../components/ui/alert-dialog';
 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from '../components/ui/dialog';
+
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '../components/ui/form';
+
+import { Input } from '../components/ui/input';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
+
 import Navbar from '../components/Navbar';
 import CourseSidebar from '../components/CourseSidebar';
 import ScrollToTop from '../components/ScrollToTop';
 import { useNavigate } from 'react-router';
 
+// 容器名称验证schema
+const containerNameSchema = z.object({
+  containerName: z.string()
+    .min(3, { message: '容器名称至少需要3个字符' })
+    .max(30, { message: '容器名称不能超过30个字符' })
+    .regex(/^[a-zA-Z0-9-_]+$/, { message: '容器名称只能包含字母、数字、连字符和下划线' })
+});
+
 const ContainersPage: React.FC = () => {
   const [containers, setContainers] = useState<Container[]>([]);
+  const [images, setImages] = useState<Image[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingImages, setLoadingImages] = useState(false);
   const [searchParams] = useSearchParams();
   const courseId = searchParams.get('courseId') ? parseInt(searchParams.get('courseId')!) : undefined;
-  const [isCreatingContainer, setIsCreatingContainer] = useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isNamingDialogOpen, setIsNamingDialogOpen] = useState(false);
+  const [selectedImageId, setSelectedImageId] = useState<number | null>(null);
   const navigate = useNavigate();
   const [currentTab, setCurrentTab] = useState('containers');
+
+  // 表单控制
+  const form = useForm<z.infer<typeof containerNameSchema>>({
+    resolver: zodResolver(containerNameSchema),
+    defaultValues: {
+      containerName: '',
+    },
+  });
 
   const handleTabChange = (value: string) => {
     if (!courseId) return;
@@ -70,6 +115,24 @@ const ContainersPage: React.FC = () => {
       console.error(error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchImages = async () => {
+    if (!courseId) {
+      toast.error('请先选择一个课程');
+      return;
+    }
+
+    try {
+      setLoadingImages(true);
+      const data = await getCourseImages(courseId);
+      setImages(data);
+    } catch (error) {
+      toast.error('获取镜像列表失败');
+      console.error(error);
+    } finally {
+      setLoadingImages(false);
     }
   };
 
@@ -117,6 +180,38 @@ const ContainersPage: React.FC = () => {
     }
   };
 
+  const handleOpenCreateDialog = () => {
+    if (!courseId) {
+      toast.error('请先选择一个课程');
+      return;
+    }
+    fetchImages();
+    setIsCreateDialogOpen(true);
+  };
+
+  const handleSelectImage = (imageId: number) => {
+    setSelectedImageId(imageId);
+    setIsNamingDialogOpen(true);
+  };
+
+  const handleCreateContainer = async (values: z.infer<typeof containerNameSchema>) => {
+    if (!courseId || !selectedImageId) {
+      toast.error('缺少必要参数');
+      return;
+    }
+
+    try {
+      await createContainer(courseId, selectedImageId, values.containerName);
+      toast.success('容器创建成功');
+      setIsNamingDialogOpen(false);
+      setIsCreateDialogOpen(false);
+      form.reset();
+      fetchContainers();
+    } catch (error) {
+      toast.error('容器创建失败');
+    }
+  };
+
   const copyToClipboard = (text: string, message: string) => {
     navigator.clipboard.writeText(text).then(
       () => {
@@ -138,6 +233,19 @@ const ContainersPage: React.FC = () => {
         return <Badge className="bg-red-500">错误</Badge>;
       default:
         return <Badge>{status}</Badge>;
+    }
+  };
+
+  const getOsTypeBadge = (osType: string) => {
+    switch (osType) {
+      case 'ubuntu':
+        return <Badge className="bg-orange-500">Ubuntu</Badge>;
+      case 'centos':
+        return <Badge className="bg-blue-500">CentOS</Badge>;
+      case 'debian':
+        return <Badge className="bg-purple-500">Debian</Badge>;
+      default:
+        return <Badge>{osType}</Badge>;
     }
   };
 
@@ -179,10 +287,10 @@ const ContainersPage: React.FC = () => {
           <div className="flex-1">
             <div className="flex justify-between items-center mb-6">
               <h1 className="text-2xl font-bold">我的容器</h1>
-              <Button className="flex items-center gap-2">
+              {courseId && (<Button className="flex items-center gap-2" onClick={handleOpenCreateDialog}>
                 <Plus size={16} />
                 <span>创建新容器</span>
-              </Button>
+              </Button>)}
             </div>
 
             {loading ? (
@@ -334,6 +442,104 @@ const ContainersPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* 创建新容器对话框 */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent className="!w-[80vw] !h-[85vh] !max-w-none sm:!max-w-none md:!max-w-none overflow-y-auto flex flex-col">
+          <DialogHeader>
+            <DialogTitle>选择镜像创建容器</DialogTitle>
+            <DialogDescription>
+              请从下面的列表中选择一个Linux镜像来创建您的学习环境容器
+            </DialogDescription>
+          </DialogHeader>
+
+          {loadingImages ? (
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+            </div>
+          ) : images.length === 0 ? (
+            <div className="text-center py-12 bg-muted rounded-lg">
+              <h3 className="text-lg font-medium mb-2">暂无可用镜像</h3>
+              <p className="text-muted-foreground mb-4">该课程暂未提供任何可用的Linux镜像</p>
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-lg border border-border bg-background">
+              <Table>
+                <TableCaption>可用的Linux镜像列表</TableCaption>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>镜像名称</TableHead>
+                    <TableHead>描述</TableHead>
+                    <TableHead>版本</TableHead>
+                    <TableHead>系统类型</TableHead>
+                    <TableHead className="text-right">操作</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {images.map((image) => (
+                    <TableRow key={image.image_id}>
+                      <TableCell className="font-medium">{image.image_name}</TableCell>
+                      <TableCell>{image.image_description}</TableCell>
+                      <TableCell>{image.version}</TableCell>
+                      <TableCell>{getOsTypeBadge(image.os_type)}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          onClick={() => handleSelectImage(image.image_id)}
+                          className="bg-primary text-white hover:bg-primary/90"
+                        >
+                          创建
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+
+        </DialogContent>
+      </Dialog>
+
+      {/* 容器命名对话框 */}
+      <Dialog open={isNamingDialogOpen} onOpenChange={setIsNamingDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>为您的容器命名</DialogTitle>
+            <DialogDescription>
+              请为您的新容器提供一个名称，该名称将用于标识您的Linux学习环境
+            </DialogDescription>
+          </DialogHeader>
+
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleCreateContainer)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="containerName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>容器名称</FormLabel>
+                    <FormControl>
+                      <Input placeholder="my-linux-container" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <DialogFooter className="sm:justify-end">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setIsNamingDialogOpen(false)}
+                >
+                  取消
+                </Button>
+                <Button type="submit">创建容器</Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

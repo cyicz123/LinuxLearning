@@ -93,11 +93,11 @@ export const deleteContainer = async (containerId: string): Promise<void> => {
  */
 export const createContainer = async (courseId: number, imageId: number, container_name: string): Promise<Container> => {
   try {
-    const response = await apiClient.post<{ code: number, message: string, data: { container: Container } }>(
+    const response = await apiClient.post<{ container: Container }>(
       `courses/${courseId}/containers`,
       { image_id: imageId, container_name: container_name }
     );
-    return response.data.container;
+    return response.container;
   } catch (error) {
     console.error('创建容器失败:', error);
     throw error;
