@@ -212,7 +212,7 @@ export default function TeacherPage() {
                 <CourseCard
                   key={course.course_id}
                   {...course}
-                  isTeacher={true}
+                  isStudent={false}
                 />
               ))}
             </div>

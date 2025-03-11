@@ -3,7 +3,7 @@ import type { Course } from '../services/courseService';
 import { Edit, Users, FileText } from 'lucide-react';
 
 type CourseCardProps = Course & {
-  isTeacher?: boolean;
+  isStudent?: boolean;
 };
 
 export default function CourseCard({
@@ -14,7 +14,7 @@ export default function CourseCard({
   teacher_name,
   enrollment_count,
   enrolled_at,
-  isTeacher = false
+  isStudent = true
 }: CourseCardProps) {
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 group relative">
@@ -33,7 +33,7 @@ export default function CourseCard({
         {/* 默认只显示课程名称 */}
         <div className="p-3">
           <h3 className="text-lg font-semibold text-gray-800 line-clamp-1">{course_name}</h3>
-          {!isTeacher && (
+          {teacher_name !== undefined && (
             <p className="text-sm text-gray-500 mt-1">教师: {teacher_name}</p>
           )}
           {enrollment_count !== undefined && (
@@ -42,13 +42,13 @@ export default function CourseCard({
         </div>
 
         {/* 鼠标悬停时只显示课程简介遮罩层 */}
-        <div className="absolute inset-0 bg-black bg-opacity-70 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-center p-4">
+        {isStudent && (<div className="absolute inset-0 bg-black bg-opacity-70 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-center p-4">
           <p className="text-white text-lg line-clamp-6">{course_description}</p>
-        </div>
+        </div>)}
       </Link>
 
       {/* 教师操作按钮 */}
-      {isTeacher && (
+      {!isStudent && (
         <div className="flex justify-around p-2 border-t border-gray-200">
           <Link
             to={`/teacher/courses/${course_id}/edit`}
