@@ -15,8 +15,10 @@ export default function Login() {
   const location = useLocation();
   const auth = useAuth();
 
-  // 获取从注册页面传递过来的消息
+  // 获取从注册页面或重定向传递过来的消息
   const message = location.state?.message || '';
+  // 获取用户之前尝试访问的页面
+  const from = location.state?.from || '/';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,19 +30,26 @@ export default function Login() {
       const data = await apiClient.post<{
         token: string;
         user: User
-      }>('auth/login', { username, password }, { requireAuth: false });
+      }>('auth/login', { username, password, role }, { requireAuth: false });
 
       // 使用AuthContext进行登录
       auth.login(data.token, data.user);
 
-      // 根据角色跳转到不同页面
-      if (data.user.role === 'admin') {
-        navigate('/admin');
-      } else if (data.user.role === 'teacher') {
-        navigate('/teacher');
+      // 如果用户之前尝试访问的是教师或管理员页面，并且角色匹配，则重定向到该页面
+      if (from.startsWith('/teacher') && data.user.role === 'teacher') {
+        navigate(from);
+      } else if (from.startsWith('/admin') && data.user.role === 'admin') {
+        navigate(from);
       } else {
-        // 学生角色跳转到首页
-        navigate('/');
+        // 否则根据角色跳转到对应的首页
+        if (data.user.role === 'admin') {
+          navigate('/admin');
+        } else if (data.user.role === 'teacher') {
+          navigate('/teacher');
+        } else {
+          // 学生角色跳转到首页
+          navigate('/student');
+        }
       }
     } catch (err) {
       if (err instanceof Error) {

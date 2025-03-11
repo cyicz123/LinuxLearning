@@ -54,16 +54,24 @@ export default function Root() {
     const token = localStorage.getItem('token');
     const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
 
-    // 如果用户未登录且不在登录/注册页面，重定向到登录页面
-    if (!token && !isAuthPage && location.pathname !== '/') {
-      navigate('/login', { replace: true });
+    // 判断是否是需要认证的路径（教师和管理员页面）
+    const isProtectedPath =
+      location.pathname.startsWith('/teacher') ||
+      location.pathname.startsWith('/admin');
+
+    // 如果用户未登录且访问需要认证的页面，重定向到登录页面
+    if (!token && isProtectedPath) {
+      navigate('/login', {
+        replace: true,
+        state: { from: location.pathname, message: '请先登录以访问该页面' }
+      });
     }
 
     // 如果用户已登录且在登录/注册页面，重定向到首页
     if (token && isAuthPage) {
       navigate('/', { replace: true });
     }
-  }, [location.pathname, navigate]);
+  }, [location.pathname, navigate, location]);
 
   return (
     <AuthProvider>

@@ -21,36 +21,105 @@ export default function Navbar() {
     };
   }, []);
 
+  // 根据用户角色获取首页路径
+  const getHomePath = () => {
+    if (!isAuthenticated) return '/student';
+
+    switch (user?.role) {
+      case 'admin':
+        return '/admin';
+      case 'teacher':
+        return '/teacher';
+      case 'student':
+      default:
+        return '/student';
+    }
+  };
+
   return (
     <nav className="bg-white shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex">
             <div className="flex-shrink-0 flex items-center">
-              <Link to="/" className="text-xl font-bold text-gray-900">
+              <Link to={getHomePath()} className="text-xl font-bold text-gray-900">
                 Linux学习平台
               </Link>
             </div>
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-              <Link
-                to="/"
-                className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              >
-                首页
-              </Link>
-              <Link
-                to="/courses"
-                className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              >
-                课程列表
-              </Link>
+              {/* 根据用户角色显示不同的导航链接 */}
+              {!isAuthenticated && (
+                <>
+                  <Link
+                    to="/student"
+                    className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  >
+                    首页
+                  </Link>
+                  <Link
+                    to="/courses"
+                    className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  >
+                    课程列表
+                  </Link>
+                </>
+              )}
+
               {isAuthenticated && user?.role === 'student' && (
-                <Link
-                  to="/containers"
-                  className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                >
-                  我的容器
-                </Link>
+                <>
+                  <Link
+                    to="/student"
+                    className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  >
+                    首页
+                  </Link>
+                  <Link
+                    to="/courses"
+                    className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  >
+                    课程列表
+                  </Link>
+                  <Link
+                    to="/containers"
+                    className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  >
+                    我的容器
+                  </Link>
+                </>
+              )}
+
+              {isAuthenticated && user?.role === 'teacher' && (
+                <>
+                  <Link
+                    to="/teacher"
+                    className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  >
+                    我的课程
+                  </Link>
+                  <Link
+                    to="/teacher/create-course"
+                    className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  >
+                    创建课程
+                  </Link>
+                </>
+              )}
+
+              {isAuthenticated && user?.role === 'admin' && (
+                <>
+                  <Link
+                    to="/admin"
+                    className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  >
+                    管理控制台
+                  </Link>
+                  <Link
+                    to="/admin/users"
+                    className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  >
+                    用户管理
+                  </Link>
+                </>
               )}
             </div>
           </div>
