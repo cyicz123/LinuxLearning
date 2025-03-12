@@ -1,6 +1,7 @@
 import { Link } from 'react-router';
 import type { Course } from '../services/courseService';
 import { Edit, Users, FileText } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 type CourseCardProps = Course & {
   isStudent?: boolean;
@@ -16,10 +17,12 @@ export default function CourseCard({
   enrolled_at,
   isStudent = true
 }: CourseCardProps) {
+  const { isAuthenticated } = useAuth();
+
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 group relative">
       <Link
-        to={`/courses/${course_id}`}
+        to={isAuthenticated && !isStudent ? `/teacher/courses/${course_id}/edit` : `/courses/${course_id}`}
         className="block"
       >
         <div className="h-48 overflow-hidden">

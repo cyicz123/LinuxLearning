@@ -233,7 +233,10 @@ export async function getCourseDetail(courseId: number): Promise<CourseDetail | 
 export async function getCourseNotifications(
   courseId: number,
   page: number = 1,
-  limit: number = 5
+  limit: number = 5,
+  keyword?: string,
+  sort_by: string = 'created_at',
+  sort_order: string = 'desc'
 ): Promise<{
   notifications: Notification[];
   total: number;
@@ -241,16 +244,86 @@ export async function getCourseNotifications(
   limit: number;
 } | null> {
   try {
+    let url = `courses/${courseId}/notifications?page=${page}&limit=${limit}`;
+
+    if (keyword) {
+      url += `&keyword=${encodeURIComponent(keyword)}`;
+    }
+
+    if (sort_by) {
+      url += `&sort_by=${sort_by}`;
+    }
+
+    if (sort_order) {
+      url += `&sort_order=${sort_order}`;
+    }
+
     const response = await apiClient.get<{
       notifications: Notification[];
       total: number;
       page: number;
       limit: number;
-    }>(`courses/${courseId}/notifications?page=${page}&limit=${limit}`);
+    }>(url);
     return response;
   } catch (error) {
     console.error('获取课程通知列表出错:', error);
     return null;
+  }
+}
+
+// 创建课程通知
+export async function createNotification(
+  courseId: number,
+  data: {
+    title: string;
+    content: string;
+  }
+): Promise<boolean> {
+  try {
+    await apiClient.post(`courses/${courseId}/notifications`, data);
+    return true;
+  } catch (error) {
+    console.error('创建通知失败:', error);
+    return false;
+  }
+}
+
+// 更新课程通知
+export async function updateNotification(
+  notificationId: number,
+  data: {
+    title: string;
+    content: string;
+  }
+): Promise<boolean> {
+  try {
+    await apiClient.put(`notifications/${notificationId}`, data);
+    return true;
+  } catch (error) {
+    console.error('更新通知失败:', error);
+    return false;
+  }
+}
+
+// 删除课程通知
+export async function deleteNotification(notificationId: number): Promise<boolean> {
+  try {
+    await apiClient.delete(`notifications/${notificationId}`);
+    return true;
+  } catch (error) {
+    console.error('删除通知失败:', error);
+    return false;
+  }
+}
+
+// 批量删除课程通知
+export async function deleteNotifications(notificationIds: number[]): Promise<boolean> {
+  try {
+    await apiClient.post(`notifications/batch-delete`, { notification_ids: notificationIds });
+    return true;
+  } catch (error) {
+    console.error('批量删除通知失败:', error);
+    return false;
   }
 }
 

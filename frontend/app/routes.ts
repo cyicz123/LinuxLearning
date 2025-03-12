@@ -8,6 +8,7 @@ export default [
   route("/profile", "routes/profile.tsx"),
   route("/teacher", "routes/teacher.tsx"),
   route("/teacher/create-course", "routes/teacher/create-course.tsx"),
+  route("/teacher/courses/:courseId/edit", "routes/teacher-course-detail.tsx"),
   route("/student", "routes/student.tsx"),
   route("/courses", "routes/courses.tsx"),
   route("/courses/:courseId", "routes/course-detail.tsx"),
