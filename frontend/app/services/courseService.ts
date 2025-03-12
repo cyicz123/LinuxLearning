@@ -229,6 +229,21 @@ export async function getCourseDetail(courseId: number): Promise<CourseDetail | 
   }
 }
 
+// 更新课程信息
+export async function updateCourse(courseId: number, data: {
+  course_name: string;
+  course_description: string;
+  cover_image: string;
+}): Promise<boolean> {
+  try {
+    await apiClient.put(`courses/${courseId}`, data);
+    return true;
+  } catch (error) {
+    console.error('更新课程信息失败:', error);
+    return false;
+  }
+}
+
 // 获取课程通知列表
 export async function getCourseNotifications(
   courseId: number,

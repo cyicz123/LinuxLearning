@@ -13,7 +13,8 @@ import {
   getCourseNotifications,
   createNotification,
   updateNotification,
-  deleteNotifications
+  deleteNotifications,
+  updateCourse
 } from '../services/courseService';
 import Navbar from '../components/Navbar';
 import CourseSidebar from '../components/CourseSidebar';
@@ -76,6 +77,13 @@ export default function TeacherCourseDetailPage() {
   const [currentNotification, setCurrentNotification] = useState<Notification | null>(null);
   const [notificationTitle, setNotificationTitle] = useState('');
   const [notificationContent, setNotificationContent] = useState('');
+
+  // 课程编辑对话框
+  const [isCourseEditDialogOpen, setIsCourseEditDialogOpen] = useState(false);
+  const [courseEditLoading, setCourseEditLoading] = useState(false);
+  const [editCourseName, setEditCourseName] = useState('');
+  const [editCourseDescription, setEditCourseDescription] = useState('');
+  const [editCoverImage, setEditCoverImage] = useState('');
 
   // 获取课程详情
   useEffect(() => {
@@ -338,6 +346,48 @@ export default function TeacherCourseDetailPage() {
     }
   };
 
+  // 打开课程编辑对话框
+  const handleOpenCourseEditDialog = () => {
+    if (courseDetail) {
+      setEditCourseName(courseDetail.course_name);
+      setEditCourseDescription(courseDetail.course_description);
+      setEditCoverImage(courseDetail.cover_image || '');
+      setIsCourseEditDialogOpen(true);
+    }
+  };
+
+  // 处理课程信息更新
+  const handleUpdateCourse = async () => {
+    if (!courseId) return;
+
+    try {
+      setCourseEditLoading(true);
+      const success = await updateCourse(parseInt(courseId), {
+        course_name: editCourseName,
+        course_description: editCourseDescription,
+        cover_image: editCoverImage
+      });
+
+      if (success) {
+        toast.success('课程信息更新成功');
+        setIsCourseEditDialogOpen(false);
+
+        // 重新获取课程详情
+        const updatedCourse = await getCourseDetail(parseInt(courseId));
+        if (updatedCourse) {
+          setCourseDetail(updatedCourse);
+        }
+      } else {
+        toast.error('课程信息更新失败');
+      }
+    } catch (err) {
+      console.error('更新课程信息失败:', err);
+      toast.error('更新课程信息失败，请稍后重试');
+    } finally {
+      setCourseEditLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -415,8 +465,8 @@ export default function TeacherCourseDetailPage() {
                         </CardDescription>
                       </div>
                       <div>
-                        <Button variant="outline" onClick={() => navigate(`/teacher/courses/${courseId}/edit`)}>
-                          管理课程
+                        <Button variant="default" onClick={handleOpenCourseEditDialog}>
+                          <Edit className="h-4 w-4 mr-1" /> 编辑
                         </Button>
                       </div>
                     </div>
@@ -460,7 +510,7 @@ export default function TeacherCourseDetailPage() {
                           onChange={(e) => setInputValue(e.target.value)}
                           className="flex-1"
                         />
-                        <Button type="submit" variant="secondary" size="icon">
+                        <Button type="submit" variant="default" size="icon">
                           <Search className="h-4 w-4" />
                         </Button>
                       </form>
@@ -639,6 +689,60 @@ export default function TeacherCourseDetailPage() {
             <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>取消</Button>
             <Button variant="destructive" onClick={handleDeleteNotifications}>
               确认删除
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 编辑课程信息对话框 */}
+      <Dialog open={isCourseEditDialogOpen} onOpenChange={setIsCourseEditDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>编辑课程信息</DialogTitle>
+            <DialogDescription>
+              修改课程的基本信息，包括名称、描述和封面图片。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label htmlFor="course-name" className="text-sm font-medium">课程名称</label>
+              <Input
+                id="course-name"
+                value={editCourseName}
+                onChange={(e) => setEditCourseName(e.target.value)}
+                placeholder="输入课程名称"
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="cover-image" className="text-sm font-medium">封面图片URL</label>
+              <Input
+                id="cover-image"
+                value={editCoverImage}
+                onChange={(e) => setEditCoverImage(e.target.value)}
+                placeholder="输入封面图片URL"
+              />
+              <p className="text-xs text-gray-500">
+                请输入有效的图片URL，建议尺寸为16:9的比例
+              </p>
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="course-description" className="text-sm font-medium">课程描述</label>
+              <textarea
+                id="course-description"
+                value={editCourseDescription}
+                onChange={(e) => setEditCourseDescription(e.target.value)}
+                placeholder="输入课程描述"
+                className="w-full min-h-[150px] p-2 border rounded-md"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCourseEditDialogOpen(false)}>取消</Button>
+            <Button
+              onClick={handleUpdateCourse}
+              disabled={!editCourseName.trim() || courseEditLoading}
+            >
+              {courseEditLoading ? '保存中...' : '保存修改'}
             </Button>
           </DialogFooter>
         </DialogContent>
