@@ -426,6 +426,7 @@ export default function TeacherCourseDetailPage() {
             <CourseSidebar
               currentTab={currentTab}
               onTabChange={handleTabChange}
+              items={teacherSidebarItems}
               className="h-fit"
             />
             <ScrollToTop
@@ -439,6 +440,7 @@ export default function TeacherCourseDetailPage() {
             <CourseSidebar
               currentTab={currentTab}
               onTabChange={handleTabChange}
+              items={teacherSidebarItems}
             />
           </div>
 
