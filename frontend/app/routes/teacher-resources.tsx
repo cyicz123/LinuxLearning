@@ -11,10 +11,10 @@ import { Checkbox } from '../components/ui/checkbox';
 import { toast } from 'sonner';
 import Pagination from '../components/Pagination';
 import Navbar from '../components/Navbar';
-import { FileIcon, FileTextIcon, VideoIcon, ArchiveIcon, Search, Plus, Edit, Trash2, MoreVertical, Upload, X } from 'lucide-react';
+import { FileIcon, FileTextIcon, VideoIcon, ArchiveIcon, Search, Plus, Edit, Trash2, MoreVertical, Upload, X, Eye } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { formatFileSize } from '../utils/formatters';
-import { getResources, uploadResource, deleteResource, type Resource } from '../services/resourceService';
+import { getResources, uploadResource, deleteResource, batchSetResourceVisibility, type Resource } from '../services/resourceService';
 import { getCourses } from '../services/courseService';
 import { addResourcesToCourse } from '../services/resourceService';
 
@@ -54,6 +54,11 @@ export default function TeacherResourcesPage() {
   const [courses, setCourses] = useState<{ course_id: number; course_name: string }[]>([]);
   const [selectedCourses, setSelectedCourses] = useState<number[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(false);
+
+  // 批量设置可见性对话框状态
+  const [batchVisibilityDialogOpen, setBatchVisibilityDialogOpen] = useState(false);
+  const [visibilityAction, setVisibilityAction] = useState<'add' | 'remove'>('add');
+  const [processingBatchVisibility, setProcessingBatchVisibility] = useState(false);
 
   // 删除确认对话框状态
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -243,18 +248,26 @@ export default function TeacherResourcesPage() {
     }
   };
 
-  // 打开课程分配对话框
-  const handleOpenAssignDialog = async (resourceId: number) => {
-    setSelectedResourceId(resourceId);
-    setSelectedCourses([]);
-    setAssignDialogOpen(true);
+  // 打开批量设置可见性对话框
+  const handleOpenBatchVisibilityDialog = (action: 'add' | 'remove') => {
+    if (selectedResources.length === 0) {
+      toast.error('请先选择要设置的资源');
+      return;
+    }
 
+    setVisibilityAction(action);
+    setBatchVisibilityDialogOpen(true);
+    loadCourses();
+  };
+
+  // 加载课程列表
+  const loadCourses = async () => {
     try {
       setLoadingCourses(true);
       const coursesData = await getCourses({
         page: 1,
         limit: 100
-      }); // 获取教师的所有课程
+      });
       if (coursesData && coursesData.courses) {
         setCourses(coursesData.courses);
       }
@@ -266,6 +279,15 @@ export default function TeacherResourcesPage() {
     }
   };
 
+  // 打开课程分配对话框
+  const handleOpenAssignDialog = async (resourceId: number) => {
+    setSelectedResourceId(resourceId);
+    setSelectedCourses([]);
+    setAssignDialogOpen(true);
+
+    await loadCourses();
+  };
+
   // 处理课程选择变化
   const handleCourseSelectionChange = (courseId: number) => {
     setSelectedCourses(prev => {
@@ -275,6 +297,43 @@ export default function TeacherResourcesPage() {
         return [...prev, courseId];
       }
     });
+  };
+
+  // 处理批量设置资源可见性
+  const handleBatchSetVisibility = async () => {
+    if (selectedResources.length === 0 || selectedCourses.length === 0) {
+      toast.error('请选择资源和课程');
+      return;
+    }
+
+    try {
+      setProcessingBatchVisibility(true);
+
+      const result = await batchSetResourceVisibility(
+        selectedResources,
+        selectedCourses,
+        visibilityAction
+      );
+
+      if (result) {
+        const actionText = visibilityAction === 'add' ? '添加到' : '从';
+        toast.success(`已成功${actionText}${result.success_count}个课程设置资源可见性`);
+
+        if (result.failed_count > 0) {
+          toast.warning(`有${result.failed_count}个操作失败`);
+        }
+
+        setBatchVisibilityDialogOpen(false);
+        setSelectedCourses([]);
+      } else {
+        toast.error('设置资源可见性失败');
+      }
+    } catch (error) {
+      console.error('设置资源可见性时发生错误:', error);
+      toast.error('设置资源可见性失败');
+    } finally {
+      setProcessingBatchVisibility(false);
+    }
   };
 
   // 处理资源分配到课程
@@ -349,174 +408,201 @@ export default function TeacherResourcesPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-
-      <div className="container mx-auto py-8">
+      <div className="container mx-auto py-6 px-4">
         <Card>
-          <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-2 sm:space-y-0">
-            <CardTitle>资源管理</CardTitle>
-            <Button onClick={() => setUploadDialogOpen(true)}>
-              <Upload className="mr-2 h-4 w-4" />
-              上传资源
-            </Button>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-2xl">资源管理</CardTitle>
+            <div className="flex space-x-2">
+              <Button onClick={() => setUploadDialogOpen(true)} className="flex items-center">
+                <Plus className="mr-2 h-4 w-4" />
+                上传资源
+              </Button>
+            </div>
           </CardHeader>
-
           <CardContent>
-            {/* 搜索和筛选 */}
-            <div className="flex flex-col md:flex-row justify-between mb-6 space-y-2 md:space-y-0 md:items-center">
-              <form onSubmit={handleSearch} className="flex flex-1 mr-4">
-                <Input
-                  type="text"
-                  placeholder="搜索资源名称..."
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  className="mr-2"
-                />
-                <Button type="submit" variant="outline">
-                  <Search className="h-4 w-4" />
-                </Button>
-              </form>
+            <div className="flex flex-col space-y-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+                <form onSubmit={handleSearch} className="flex w-full sm:w-auto space-x-2">
+                  <Input
+                    placeholder="搜索资源..."
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    className="w-full sm:w-64"
+                  />
+                  <Button type="submit" variant="outline" size="icon">
+                    <Search className="h-4 w-4" />
+                  </Button>
+                </form>
+                <div className="flex w-full sm:w-auto space-x-2">
+                  <Select value={resourceType} onValueChange={handleResourceTypeChange}>
+                    <SelectTrigger className="w-full sm:w-40">
+                      <SelectValue placeholder="资源类型" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">所有类型</SelectItem>
+                      <SelectItem value="document">文档</SelectItem>
+                      <SelectItem value="video">视频</SelectItem>
+                      <SelectItem value="archive">压缩包</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
-              <div className="flex items-center space-x-2">
-                {selectedResources.length > 0 && (
+              {/* 批量操作按钮 */}
+              {selectedResources.length > 0 && (
+                <div className="flex space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleOpenBatchVisibilityDialog('add')}
+                    className="flex items-center"
+                  >
+                    <Eye className="mr-2 h-4 w-4" />
+                    批量添加可见性
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleOpenBatchVisibilityDialog('remove')}
+                    className="flex items-center"
+                  >
+                    <Eye className="mr-2 h-4 w-4 text-red-500" />
+                    批量移除可见性
+                  </Button>
                   <Button
                     variant="destructive"
                     size="sm"
                     onClick={handleOpenBatchDeleteDialog}
-                    className="mr-2"
+                    className="flex items-center"
                   >
-                    <Trash2 className="h-4 w-4 mr-1" /> 删除
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    批量删除
                   </Button>
-                )}
+                </div>
+              )}
 
-                <Select value={resourceType} onValueChange={handleResourceTypeChange}>
-                  <SelectTrigger className="w-[150px]">
-                    <SelectValue placeholder="资源类型" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">全部类型</SelectItem>
-                    <SelectItem value="document">文档</SelectItem>
-                    <SelectItem value="video">视频</SelectItem>
-                    <SelectItem value="archive">压缩包</SelectItem>
-                    <SelectItem value="other">其他</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* 资源列表 */}
-            {loading ? (
-              <div className="flex justify-center items-center h-64">
-                <p className="text-lg text-gray-500">加载资源中...</p>
-              </div>
-            ) : resources.length > 0 ? (
-              <>
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-gray-50">
-                        <th className="w-6 px-4 py-2">
-                          <Checkbox
-                            checked={selectAll}
-                            onCheckedChange={handleSelectAll}
-                            aria-label="选择所有资源"
-                          />
-                        </th>
-                        <th className="px-4 py-2 text-left">类型</th>
-                        <th className="px-4 py-2 text-left">资源名称</th>
-                        <th className="px-4 py-2 text-left">描述</th>
-                        <th className="px-4 py-2 text-left">大小</th>
-                        <th className="px-4 py-2 text-left">上传时间</th>
-                        <th className="px-4 py-2 text-left">操作</th>
+              <div className="border rounded-md">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">
+                        <Checkbox
+                          checked={selectAll}
+                          onCheckedChange={handleSelectAll}
+                          aria-label="选择所有资源"
+                        />
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        资源名称
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        类型
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        大小
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        上传时间
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        操作
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {loading ? (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+                          加载中...
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {resources.map((resource) => (
-                        <tr key={resource.resource_id} className="border-t hover:bg-gray-50">
-                          <td className="px-4 py-3">
+                    ) : error ? (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-4 text-center text-sm text-red-500">
+                          {error}
+                        </td>
+                      </tr>
+                    ) : resources.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+                          暂无资源
+                        </td>
+                      </tr>
+                    ) : (
+                      resources.map((resource) => (
+                        <tr key={resource.resource_id}>
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <Checkbox
                               checked={selectedResources.includes(resource.resource_id)}
                               onCheckedChange={() => handleSelectResource(resource.resource_id)}
                               aria-label={`选择资源 ${resource.resource_name}`}
                             />
                           </td>
-                          <td className="px-4 py-3">
-                            {getResourceIcon(resource.resource_type)}
-                          </td>
-                          <td className="px-4 py-3 font-medium">{resource.resource_name}</td>
-                          <td className="px-4 py-3 text-gray-600 max-w-xs truncate">
-                            {resource.resource_description || '无描述'}
-                          </td>
-                          <td className="px-4 py-3 text-gray-600">
-                            {formatFileSize(resource.size)}
-                          </td>
-                          <td className="px-4 py-3 text-gray-600">
-                            {new Date(resource.created_at).toLocaleDateString()}
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center space-x-2">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm">
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => handleOpenAssignDialog(resource.resource_id)}>
-                                    <FileIcon className="mr-2 h-4 w-4" />
-                                    分配到课程
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleOpenDeleteDialog(resource.resource_id)}>
-                                    <Trash2 className="mr-2 h-4 w-4 text-red-500" />
-                                    删除资源
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-
-                              {resource.download_url && (
-                                <a
-                                  href={resource.download_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                >
-                                  <Button variant="outline" size="sm">
-                                    下载
-                                  </Button>
-                                </a>
-                              )}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              {getResourceIcon(resource.resource_type)}
+                              <div className="ml-4">
+                                <div className="text-sm font-medium text-gray-900">
+                                  {resource.resource_name}
+                                </div>
+                                {resource.resource_description && (
+                                  <div className="text-sm text-gray-500">
+                                    {resource.resource_description}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {resource.resource_type === 'document' ? '文档' :
+                              resource.resource_type === 'video' ? '视频' :
+                                resource.resource_type === 'archive' ? '压缩包' : '其他'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {formatFileSize(resource.size)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {new Date(resource.created_at).toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleOpenAssignDialog(resource.resource_id)}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  设置可见性
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleOpenDeleteDialog(resource.resource_id)}>
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  删除
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </td>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* 分页控件 */}
-                {totalPages > 1 && (
-                  <div className="mt-6">
-                    <Pagination
-                      currentPage={currentPage}
-                      totalPages={totalPages}
-                      onPageChange={handlePageChange}
-                    />
-                    <div className="text-center mt-2 text-sm text-gray-500">
-                      共 {totalResources} 个资源，当前显示第 {currentPage} 页
-                    </div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-gray-500">暂无资源</p>
-                <Button
-                  onClick={() => setUploadDialogOpen(true)}
-                  className="mt-4"
-                >
-                  <Upload className="mr-2 h-4 w-4" />
-                  上传第一个资源
-                </Button>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
-            )}
+
+              {!loading && !error && resources.length > 0 && (
+                <div className="flex justify-between items-center mt-4">
+                  <div className="text-sm text-gray-500">
+                    共 {totalResources} 个资源
+                  </div>
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={handlePageChange}
+                  />
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -526,11 +612,7 @@ export default function TeacherResourcesPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>上传资源</DialogTitle>
-            <DialogDescription>
-              上传新的学习资源，可以是文档、视频或压缩包等。
-            </DialogDescription>
           </DialogHeader>
-
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="resource-name" className="text-right">
@@ -541,10 +623,8 @@ export default function TeacherResourcesPage() {
                 value={resourceName}
                 onChange={(e) => setResourceName(e.target.value)}
                 className="col-span-3"
-                required
               />
             </div>
-
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="resource-description" className="text-right">
                 资源描述
@@ -554,18 +634,13 @@ export default function TeacherResourcesPage() {
                 value={resourceDescription}
                 onChange={(e) => setResourceDescription(e.target.value)}
                 className="col-span-3"
-                rows={3}
               />
             </div>
-
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="resource-type" className="text-right">
                 资源类型
               </Label>
-              <Select
-                value={selectedResourceType}
-                onValueChange={setSelectedResourceType}
-              >
+              <Select value={selectedResourceType} onValueChange={setSelectedResourceType}>
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="选择资源类型" />
                 </SelectTrigger>
@@ -573,11 +648,9 @@ export default function TeacherResourcesPage() {
                   <SelectItem value="document">文档</SelectItem>
                   <SelectItem value="video">视频</SelectItem>
                   <SelectItem value="archive">压缩包</SelectItem>
-                  <SelectItem value="other">其他</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="resource-file" className="text-right">
                 选择文件
@@ -586,41 +659,51 @@ export default function TeacherResourcesPage() {
                 <Input
                   id="resource-file"
                   type="file"
-                  onChange={handleFileChange}
                   ref={fileInputRef}
-                  className="col-span-3"
-                  required
+                  onChange={handleFileChange}
+                  className="hidden"
                 />
-                {selectedFile && (
-                  <div className="mt-2 flex items-center justify-between bg-gray-50 p-2 rounded">
-                    <span className="text-sm truncate">{selectedFile.name}</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedFile(null);
-                        if (fileInputRef.current) {
-                          fileInputRef.current.value = '';
-                        }
-                      }}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    选择文件
+                  </Button>
+                  {selectedFile && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="truncate max-w-[200px]">{selectedFile.name}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedFile(null);
+                          if (fileInputRef.current) {
+                            fileInputRef.current.value = '';
+                          }
+                        }}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-
           <DialogFooter>
             <Button
+              type="button"
               variant="outline"
               onClick={() => setUploadDialogOpen(false)}
-              disabled={uploading}
             >
               取消
             </Button>
             <Button
+              type="button"
               onClick={handleUploadResource}
               disabled={uploading}
             >
@@ -634,7 +717,7 @@ export default function TeacherResourcesPage() {
       <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>分配资源到课程</DialogTitle>
+            <DialogTitle>设置资源可见性</DialogTitle>
             <DialogDescription>
               选择要将此资源分配到的课程。学生只能在选课后查看和下载资源。
             </DialogDescription>
@@ -646,22 +729,50 @@ export default function TeacherResourcesPage() {
                 <p className="text-gray-500">加载课程中...</p>
               </div>
             ) : courses.length > 0 ? (
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {courses.map((course) => (
-                  <div key={course.course_id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`course-${course.course_id}`}
-                      checked={selectedCourses.includes(course.course_id)}
-                      onCheckedChange={() => handleCourseSelectionChange(course.course_id)}
-                    />
-                    <Label
-                      htmlFor={`course-${course.course_id}`}
-                      className="cursor-pointer"
-                    >
-                      {course.course_name}
-                    </Label>
-                  </div>
-                ))}
+              <div className="border rounded-md max-h-60 overflow-y-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50 sticky top-0">
+                    <tr>
+                      <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">
+                        <Checkbox
+                          checked={selectedCourses.length === courses.length}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedCourses(courses.map(course => course.course_id));
+                            } else {
+                              setSelectedCourses([]);
+                            }
+                          }}
+                          aria-label="选择所有课程"
+                        />
+                      </th>
+                      <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        课程名称
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {courses.map((course) => (
+                      <tr key={course.course_id} className="hover:bg-gray-50">
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <Checkbox
+                            id={`course-${course.course_id}`}
+                            checked={selectedCourses.includes(course.course_id)}
+                            onCheckedChange={() => handleCourseSelectionChange(course.course_id)}
+                          />
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <Label
+                            htmlFor={`course-${course.course_id}`}
+                            className="cursor-pointer text-sm font-medium text-gray-900"
+                          >
+                            {course.course_name}
+                          </Label>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             ) : (
               <div className="text-center py-4">
@@ -676,6 +787,10 @@ export default function TeacherResourcesPage() {
                 </Button>
               </div>
             )}
+          </div>
+
+          <div className="flex justify-between items-center mt-2 text-sm text-gray-500">
+            <div>已选择 {selectedCourses.length} 个课程</div>
           </div>
 
           <DialogFooter>
@@ -702,12 +817,10 @@ export default function TeacherResourcesPage() {
             <DialogTitle>确认删除</DialogTitle>
             <DialogDescription>
               {isBatchDelete
-                ? `您确定要删除选中的 ${selectedResources.length} 个资源吗？此操作无法撤销，并且会从所有引用这些资源的课程中移除。`
-                : '您确定要删除此资源吗？此操作无法撤销，并且会从所有引用此资源的课程中移除。'
-              }
+                ? `确定要删除选中的 ${selectedResources.length} 个资源吗？此操作不可撤销。`
+                : '确定要删除此资源吗？此操作不可撤销。'}
             </DialogDescription>
           </DialogHeader>
-
           <DialogFooter>
             <Button
               variant="outline"
@@ -720,6 +833,105 @@ export default function TeacherResourcesPage() {
               onClick={handleDeleteResource}
             >
               确认删除
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 批量设置可见性对话框 */}
+      <Dialog open={batchVisibilityDialogOpen} onOpenChange={setBatchVisibilityDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>批量设置资源可见性</DialogTitle>
+            <DialogDescription>
+              {visibilityAction === 'add'
+                ? `选择要将选中的 ${selectedResources.length} 个资源添加到的课程。`
+                : `选择要将选中的 ${selectedResources.length} 个资源从哪些课程中移除。`}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            {loadingCourses ? (
+              <div className="text-center py-4">
+                <p className="text-gray-500">加载课程中...</p>
+              </div>
+            ) : courses.length > 0 ? (
+              <div className="border rounded-md max-h-60 overflow-y-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50 sticky top-0">
+                    <tr>
+                      <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">
+                        <Checkbox
+                          checked={selectedCourses.length === courses.length}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedCourses(courses.map(course => course.course_id));
+                            } else {
+                              setSelectedCourses([]);
+                            }
+                          }}
+                          aria-label="选择所有课程"
+                        />
+                      </th>
+                      <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        课程名称
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {courses.map((course) => (
+                      <tr key={course.course_id} className="hover:bg-gray-50">
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <Checkbox
+                            id={`course-${course.course_id}`}
+                            checked={selectedCourses.includes(course.course_id)}
+                            onCheckedChange={() => handleCourseSelectionChange(course.course_id)}
+                          />
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <Label
+                            htmlFor={`course-${course.course_id}`}
+                            className="cursor-pointer text-sm font-medium text-gray-900"
+                          >
+                            {course.course_name}
+                          </Label>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-gray-500">暂无课程</p>
+                <Button
+                  onClick={() => navigate('/teacher/create-course')}
+                  className="mt-2"
+                  variant="outline"
+                  size="sm"
+                >
+                  创建课程
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-between items-center mt-2 text-sm text-gray-500">
+            <div>已选择 {selectedCourses.length} 个课程</div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setBatchVisibilityDialogOpen(false)}
+            >
+              取消
+            </Button>
+            <Button
+              onClick={handleBatchSetVisibility}
+              disabled={selectedCourses.length === 0 || processingBatchVisibility}
+            >
+              {processingBatchVisibility ? '处理中...' : '确认设置'}
             </Button>
           </DialogFooter>
         </DialogContent>

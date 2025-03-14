@@ -153,4 +153,39 @@ export async function getAvailableResourcesForCourse(
     console.error('获取可添加资源列表出错:', error);
     return null;
   }
+}
+
+// 批量设置资源可见性
+export async function batchSetResourceVisibility(
+  resourceIds: number[],
+  courseIds: number[],
+  action: 'add' | 'remove'
+): Promise<{
+  success_count: number;
+  failed_count: number;
+  details: Array<{
+    resource_id: number;
+    course_id: number;
+    success: boolean;
+  }>;
+} | null> {
+  try {
+    const response = await apiClient.post<{
+      success_count: number;
+      failed_count: number;
+      details: Array<{
+        resource_id: number;
+        course_id: number;
+        success: boolean;
+      }>;
+    }>('resources/batch-visibility', {
+      resource_ids: resourceIds,
+      course_ids: courseIds,
+      action
+    });
+    return response;
+  } catch (error) {
+    console.error('批量设置资源可见性出错:', error);
+    return null;
+  }
 } 
