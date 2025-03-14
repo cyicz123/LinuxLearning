@@ -57,15 +57,20 @@ export default function TeacherCourseResourcesPage() {
   const [searchKeyword, setSearchKeyword] = useState('');
   const [inputValue, setInputValue] = useState('');
 
+  // 资源选择状态
+  const [selectedResources, setSelectedResources] = useState<number[]>([]);
+  const [selectAll, setSelectAll] = useState(false);
+
   // 添加资源对话框状态
   const [addResourceDialogOpen, setAddResourceDialogOpen] = useState(false);
   const [availableResources, setAvailableResources] = useState<Resource[]>([]);
-  const [selectedResources, setSelectedResources] = useState<number[]>([]);
+  const [selectedResourcesToAdd, setSelectedResourcesToAdd] = useState<number[]>([]);
   const [loadingAvailableResources, setLoadingAvailableResources] = useState(false);
 
   // 删除确认对话框状态
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
   const [resourceToRemove, setResourceToRemove] = useState<number | null>(null);
+  const [isBatchRemove, setIsBatchRemove] = useState(false);
 
   // 获取课程详情
   useEffect(() => {
@@ -103,6 +108,9 @@ export default function TeacherCourseResourcesPage() {
           setResources(data.resources);
           setTotalResources(data.total);
           setTotalPages(Math.ceil(data.total / pageSize));
+          // 重置选择状态
+          setSelectedResources([]);
+          setSelectAll(false);
         } else {
           setError('获取资源列表失败');
         }
@@ -115,7 +123,7 @@ export default function TeacherCourseResourcesPage() {
     };
 
     fetchResources();
-  }, [courseId, currentPage, pageSize]);
+  }, [courseId, currentPage, pageSize, searchKeyword]);
 
   // 处理分页变化
   const handlePageChange = (page: number) => {
@@ -148,6 +156,27 @@ export default function TeacherCourseResourcesPage() {
     }
   };
 
+  // 处理资源选择
+  const handleSelectResource = (resourceId: number) => {
+    setSelectedResources(prev => {
+      if (prev.includes(resourceId)) {
+        return prev.filter(id => id !== resourceId);
+      } else {
+        return [...prev, resourceId];
+      }
+    });
+  };
+
+  // 处理全选
+  const handleSelectAll = () => {
+    if (selectAll) {
+      setSelectedResources([]);
+    } else {
+      setSelectedResources(resources.map(r => r.resource_id));
+    }
+    setSelectAll(!selectAll);
+  };
+
   // 获取资源类型图标
   const getResourceIcon = (type: string) => {
     switch (type) {
@@ -166,7 +195,7 @@ export default function TeacherCourseResourcesPage() {
   const handleOpenAddResourceDialog = async () => {
     if (!courseId) return;
 
-    setSelectedResources([]);
+    setSelectedResourcesToAdd([]);
     setAddResourceDialogOpen(true);
 
     try {
@@ -185,9 +214,9 @@ export default function TeacherCourseResourcesPage() {
     }
   };
 
-  // 处理资源选择变化
+  // 处理资源选择变化（添加对话框中）
   const handleResourceSelectionChange = (resourceId: number) => {
-    setSelectedResources(prev => {
+    setSelectedResourcesToAdd(prev => {
       if (prev.includes(resourceId)) {
         return prev.filter(id => id !== resourceId);
       } else {
@@ -198,13 +227,13 @@ export default function TeacherCourseResourcesPage() {
 
   // 处理添加资源到课程
   const handleAddResourcesToClass = async () => {
-    if (!courseId || selectedResources.length === 0) {
+    if (!courseId || selectedResourcesToAdd.length === 0) {
       toast.error('请选择至少一个资源');
       return;
     }
 
     try {
-      const success = await addResourcesToCourse(parseInt(courseId), selectedResources);
+      const success = await addResourcesToCourse(parseInt(courseId), selectedResourcesToAdd);
 
       if (success) {
         toast.success('资源添加成功');
@@ -226,14 +255,67 @@ export default function TeacherCourseResourcesPage() {
     }
   };
 
+  // 打开批量移除对话框
+  const handleOpenBatchRemoveDialog = () => {
+    if (selectedResources.length === 0) {
+      toast.error('请先选择要移除的资源');
+      return;
+    }
+    setIsBatchRemove(true);
+    setRemoveDialogOpen(true);
+  };
+
   // 打开移除资源确认对话框
   const handleOpenRemoveDialog = (resourceId: number) => {
     setResourceToRemove(resourceId);
+    setIsBatchRemove(false);
     setRemoveDialogOpen(true);
+  };
+
+  // 处理批量从课程移除资源
+  const handleBatchRemoveResourcesFromClass = async () => {
+    if (!courseId || selectedResources.length === 0) return;
+
+    try {
+      const promises = selectedResources.map(resourceId =>
+        removeResourceFromCourse(parseInt(courseId), resourceId)
+      );
+
+      const results = await Promise.all(promises);
+
+      if (results.every(result => result)) {
+        toast.success(`成功移除 ${selectedResources.length} 个资源`);
+
+        // 从列表中移除已删除的资源
+        setResources(prev => prev.filter(resource => !selectedResources.includes(resource.resource_id)));
+
+        // 重置选择状态
+        setSelectedResources([]);
+        setSelectAll(false);
+
+        // 如果当前页没有资源了，且不是第一页，则返回上一页
+        if (resources.length === selectedResources.length && currentPage > 1) {
+          setCurrentPage(currentPage - 1);
+        }
+
+        setRemoveDialogOpen(false);
+        setIsBatchRemove(false);
+      } else {
+        toast.error('部分资源移除失败');
+      }
+    } catch (error) {
+      console.error('批量移除资源时发生错误:', error);
+      toast.error('批量移除资源失败');
+    }
   };
 
   // 处理从课程移除资源
   const handleRemoveResourceFromClass = async () => {
+    if (isBatchRemove) {
+      await handleBatchRemoveResourcesFromClass();
+      return;
+    }
+
     if (!courseId || !resourceToRemove) return;
 
     try {
@@ -244,6 +326,9 @@ export default function TeacherCourseResourcesPage() {
 
         // 从列表中移除已删除的资源
         setResources(prev => prev.filter(resource => resource.resource_id !== resourceToRemove));
+
+        // 从选中列表中移除
+        setSelectedResources(prev => prev.filter(id => id !== resourceToRemove));
 
         // 如果当前页没有资源了，且不是第一页，则返回上一页
         if (resources.length === 1 && currentPage > 1) {
@@ -328,19 +413,31 @@ export default function TeacherCourseResourcesPage() {
               </CardHeader>
 
               <CardContent>
-                {/* 搜索 */}
-                <form onSubmit={handleSearch} className="flex mb-6">
-                  <Input
-                    type="text"
-                    placeholder="搜索资源名称..."
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    className="mr-2"
-                  />
-                  <Button type="submit" variant="outline">
-                    <Search className="h-4 w-4" />
-                  </Button>
-                </form>
+                {/* 搜索和操作 */}
+                <div className="flex flex-col md:flex-row justify-between mb-6 space-y-2 md:space-y-0 md:items-center">
+                  <form onSubmit={handleSearch} className="flex flex-1 mr-4">
+                    <Input
+                      type="text"
+                      placeholder="搜索资源名称..."
+                      value={inputValue}
+                      onChange={(e) => setInputValue(e.target.value)}
+                      className="mr-2"
+                    />
+                    <Button type="submit" variant="outline">
+                      <Search className="h-4 w-4" />
+                    </Button>
+                  </form>
+
+                  {selectedResources.length > 0 && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleOpenBatchRemoveDialog}
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" /> 批量移除
+                    </Button>
+                  )}
+                </div>
 
                 {/* 资源列表 */}
                 {loading ? (
@@ -353,6 +450,13 @@ export default function TeacherCourseResourcesPage() {
                       <table className="w-full border-collapse">
                         <thead>
                           <tr className="bg-gray-50">
+                            <th className="w-6 px-4 py-2">
+                              <Checkbox
+                                checked={selectAll}
+                                onCheckedChange={handleSelectAll}
+                                aria-label="选择所有资源"
+                              />
+                            </th>
                             <th className="px-4 py-2 text-left">类型</th>
                             <th className="px-4 py-2 text-left">资源名称</th>
                             <th className="px-4 py-2 text-left">描述</th>
@@ -364,6 +468,13 @@ export default function TeacherCourseResourcesPage() {
                         <tbody>
                           {resources.map((resource) => (
                             <tr key={resource.resource_id} className="border-t hover:bg-gray-50">
+                              <td className="px-4 py-3">
+                                <Checkbox
+                                  checked={selectedResources.includes(resource.resource_id)}
+                                  onCheckedChange={() => handleSelectResource(resource.resource_id)}
+                                  aria-label={`选择资源 ${resource.resource_name}`}
+                                />
+                              </td>
                               <td className="px-4 py-3">
                                 {getResourceIcon(resource.resource_type)}
                               </td>
@@ -466,7 +577,7 @@ export default function TeacherCourseResourcesPage() {
                   <div key={resource.resource_id} className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded">
                     <Checkbox
                       id={`resource-${resource.resource_id}`}
-                      checked={selectedResources.includes(resource.resource_id)}
+                      checked={selectedResourcesToAdd.includes(resource.resource_id)}
                       onCheckedChange={() => handleResourceSelectionChange(resource.resource_id)}
                     />
                     <div className="flex items-center space-x-2">
@@ -508,7 +619,7 @@ export default function TeacherCourseResourcesPage() {
             </Button>
             <Button
               onClick={handleAddResourcesToClass}
-              disabled={selectedResources.length === 0}
+              disabled={selectedResourcesToAdd.length === 0}
             >
               添加到课程
             </Button>
@@ -522,7 +633,10 @@ export default function TeacherCourseResourcesPage() {
           <DialogHeader>
             <DialogTitle>确认移除</DialogTitle>
             <DialogDescription>
-              您确定要从课程中移除此资源吗？学生将无法再访问此资源，但资源本身不会被删除。
+              {isBatchRemove
+                ? `您确定要从课程中移除选中的 ${selectedResources.length} 个资源吗？学生将无法再访问这些资源，但资源本身不会被删除。`
+                : '您确定要从课程中移除此资源吗？学生将无法再访问此资源，但资源本身不会被删除。'
+              }
             </DialogDescription>
           </DialogHeader>
 
