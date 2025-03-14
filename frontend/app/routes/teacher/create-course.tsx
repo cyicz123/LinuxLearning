@@ -8,6 +8,7 @@ import Navbar from '../../components/Navbar';
 import { useAuth } from '../../contexts/AuthContext';
 import { useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
+import ImageUploader from '../../components/ImageUploader';
 
 export default function CreateCoursePage() {
   const [courseName, setCourseName] = useState('');
@@ -133,18 +134,19 @@ export default function CreateCoursePage() {
               </div>
 
               <div>
-                <label htmlFor="coverImage" className="block text-sm font-medium text-gray-700 mb-1">
-                  封面图片URL（可选）
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  课程封面图片
                 </label>
-                <Input
-                  id="coverImage"
-                  value={coverImage}
-                  onChange={(e) => setCoverImage(e.target.value)}
-                  placeholder="请输入封面图片URL，不填则使用默认图片"
+                <ImageUploader
+                  initialImageUrl={coverImage}
+                  onImageUpload={setCoverImage}
+                  fileType="course_cover"
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  提示：您可以上传图片到图床，然后将URL粘贴到此处。后续将支持直接上传图片。
-                </p>
+                {!coverImage && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    不上传图片将使用默认封面
+                  </p>
+                )}
               </div>
 
               <div className="flex justify-end">

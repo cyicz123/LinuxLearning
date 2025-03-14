@@ -23,6 +23,7 @@ import Pagination from '../components/Pagination';
 import ScrollToTop from '../components/ScrollToTop';
 import { Bell, FileText, Users, Menu, ChevronUp, Search, Plus, Edit, Trash2, MoreVertical } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
+import ImageUploader from '../components/ImageUploader';
 
 // 自定义侧边栏项目
 const teacherSidebarItems = [
@@ -716,16 +717,12 @@ export default function TeacherCourseDetailPage() {
               />
             </div>
             <div className="space-y-2">
-              <label htmlFor="cover-image" className="text-sm font-medium">封面图片URL</label>
-              <Input
-                id="cover-image"
-                value={editCoverImage}
-                onChange={(e) => setEditCoverImage(e.target.value)}
-                placeholder="输入封面图片URL"
+              <label className="text-sm font-medium">课程封面图片</label>
+              <ImageUploader
+                initialImageUrl={editCoverImage}
+                onImageUpload={setEditCoverImage}
+                fileType="course_cover"
               />
-              <p className="text-xs text-gray-500">
-                请输入有效的图片URL，建议尺寸为16:9的比例
-              </p>
             </div>
             <div className="space-y-2">
               <label htmlFor="course-description" className="text-sm font-medium">课程描述</label>

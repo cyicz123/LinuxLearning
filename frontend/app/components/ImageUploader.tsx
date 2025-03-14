@@ -1,117 +1,122 @@
 import { useState, useRef } from 'react';
+import { Button } from './ui/button';
+import { uploadFile, type FileType } from '../services/uploadService';
+import { Image, Upload, X } from 'lucide-react';
 
 interface ImageUploaderProps {
-  currentImage?: string;
-  onImageSelected: (imageData: string) => void;
-  aspectRatio?: number;
-  shape?: 'square' | 'circle';
-  maxSize?: number; // 单位：KB
-  width?: string | number;
-  height?: string | number;
+  initialImageUrl?: string;
+  onImageUpload: (imageUrl: string) => void;
+  fileType: FileType;
+  resourceId?: number;
+  className?: string;
 }
 
 export default function ImageUploader({
-  currentImage,
-  onImageSelected,
-  aspectRatio = 1,
-  shape = 'circle',
-  maxSize = 5000, // 默认5MB
-  width = '100%',
-  height = '100%'
+  initialImageUrl,
+  onImageUpload,
+  fileType,
+  resourceId,
+  className = ''
 }: ImageUploaderProps) {
-  const [preview, setPreview] = useState<string | null>(currentImage || null);
+  const [imageUrl, setImageUrl] = useState<string>(initialImageUrl || '');
+  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // 验证文件
-    if (!validateFile(file, maxSize)) return;
-
-    // 创建预览
-    const reader = new FileReader();
-    reader.onload = () => {
-      const imageData = reader.result as string;
-      setPreview(imageData);
-      onImageSelected(imageData);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const validateFile = (file: File, maxSizeKB: number): boolean => {
     // 验证文件类型
-    if (!file.type.match(/image\/(jpeg|png|gif|webp|svg\+xml)/)) {
-      setError('请上传图片文件 (JPEG, PNG, GIF, WEBP, SVG)');
-      return false;
+    if (!file.type.startsWith('image/')) {
+      setError('请上传图片文件');
+      return;
     }
 
-    // 验证文件大小
-    if (file.size > maxSizeKB * 1024) {
-      setError(`图片大小不能超过 ${maxSizeKB / 1000} MB`);
-      return false;
+    // 验证文件大小（限制为5MB）
+    if (file.size > 5 * 1024 * 1024) {
+      setError('图片大小不能超过5MB');
+      return;
     }
 
     setError(null);
-    return true;
+    setIsUploading(true);
+
+    try {
+      // 创建本地预览
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setImageUrl(event.target.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
+
+      // 上传到服务器
+      const response = await uploadFile(file, fileType, resourceId);
+
+      // 更新图片URL并通知父组件
+      setImageUrl(response.file_url);
+      onImageUpload(response.file_url);
+    } catch (err) {
+      console.error('上传图片失败:', err);
+      setError('上传图片失败，请重试');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
-  const triggerFileInput = () => {
+  const handleUploadClick = () => {
     fileInputRef.current?.click();
   };
 
+  const handleRemoveImage = () => {
+    setImageUrl('');
+    onImageUpload('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   return (
-    <div className="relative" style={{ width, height }}>
-      {/* 隐藏的文件输入 */}
+    <div className={`flex flex-col gap-2 ${className}`}>
       <input
         type="file"
         ref={fileInputRef}
-        onChange={handleFileSelect}
-        accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml"
+        onChange={handleFileChange}
+        accept="image/*"
         className="hidden"
       />
 
-      {/* 图片预览/上传区域 */}
-      <div
-        className={`
-          ${shape === 'circle' ? 'rounded-full' : 'rounded-md'}
-          overflow-hidden relative cursor-pointer
-          border-2 border-dashed border-gray-300 hover:border-indigo-500
-          transition-colors duration-300 w-full h-full
-        `}
-        style={{ aspectRatio: aspectRatio }}
-        onClick={triggerFileInput}
-      >
-        {preview ? (
+      {imageUrl ? (
+        <div className="relative">
           <img
-            src={preview}
-            alt="预览图"
-            className="w-full h-full object-cover"
+            src={imageUrl}
+            alt="上传预览"
+            className="w-full h-auto rounded-md object-cover"
           />
-        ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center bg-gray-100 p-2">
-            <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <span className="text-xs text-gray-500 text-center mt-1">
-              点击上传图片
-            </span>
-          </div>
-        )}
-
-        {/* 悬停覆盖层 */}
-        <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
-          <span className="text-white text-sm font-medium">
-            {preview ? '更换图片' : '上传图片'}
-          </span>
+          <button
+            type="button"
+            onClick={handleRemoveImage}
+            className="absolute top-2 right-2 bg-black bg-opacity-50 rounded-full p-1 text-white hover:bg-opacity-70 transition-all"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
-      </div>
-
-      {/* 错误信息 */}
-      {error && (
-        <p className="text-red-500 text-xs mt-2">{error}</p>
+      ) : (
+        <div
+          className="border-2 border-dashed border-gray-300 rounded-md p-6 flex flex-col items-center justify-center cursor-pointer hover:border-gray-400 transition-all"
+          onClick={handleUploadClick}
+        >
+          <Image className="h-10 w-10 text-gray-400 mb-2" />
+          <p className="text-sm text-gray-500">点击上传图片</p>
+          <p className="text-xs text-gray-400 mt-1">支持JPG、PNG格式，最大5MB</p>
+        </div>
       )}
+
+      {error && <p className="text-sm text-red-500">{error}</p>}
+
+      {isUploading && <p className="text-sm text-blue-500">上传中，请稍候...</p>}
     </div>
   );
 } 
