@@ -344,17 +344,20 @@ export default function TeacherResourcesPage() {
     }
 
     try {
-      const promises = selectedCourses.map(courseId =>
-        addResourcesToCourse(courseId, [selectedResourceId])
+      const result = await batchSetResourceVisibility(
+        [selectedResourceId],
+        selectedCourses,
+        'add'
       );
 
-      const results = await Promise.all(promises);
-
-      if (results.every(result => result)) {
+      if (result) {
         toast.success('资源已成功分配到所选课程');
+        if (result.failed_count > 0) {
+          toast.warning(`有${result.failed_count}个操作失败`);
+        }
         setAssignDialogOpen(false);
       } else {
-        toast.error('部分课程分配失败');
+        toast.error('分配资源到课程失败');
       }
     } catch (error) {
       console.error('分配资源到课程时发生错误:', error);
