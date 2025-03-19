@@ -485,64 +485,54 @@ export default function TeacherResourcesPage() {
                 </div>
               )}
 
-              <div className="border rounded-md">
-                <table className="min-w-full divide-y divide-gray-200">
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">
+                      <th className="w-6 px-4 py-2">
                         <Checkbox
                           checked={selectAll}
                           onCheckedChange={handleSelectAll}
                           aria-label="选择所有资源"
                         />
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        资源名称
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        类型
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        大小
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        上传时间
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        操作
-                      </th>
+                      <th className="px-4 py-2 text-left">资源名称</th>
+                      <th className="px-4 py-2 text-left">类型</th>
+                      <th className="px-4 py-2 text-left">大小</th>
+                      <th className="px-4 py-2 text-left">上传时间</th>
+                      <th className="px-4 py-2 text-left">操作</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody>
                     {loading ? (
                       <tr>
-                        <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+                        <td colSpan={6} className="px-4 py-3 text-center text-sm text-gray-500">
                           加载中...
                         </td>
                       </tr>
                     ) : error ? (
                       <tr>
-                        <td colSpan={6} className="px-6 py-4 text-center text-sm text-red-500">
+                        <td colSpan={6} className="px-4 py-3 text-center text-sm text-red-500">
                           {error}
                         </td>
                       </tr>
                     ) : resources.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+                        <td colSpan={6} className="px-4 py-3 text-center text-sm text-gray-500">
                           暂无资源
                         </td>
                       </tr>
                     ) : (
                       resources.map((resource) => (
-                        <tr key={resource.resource_id}>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                        <tr key={resource.resource_id} className="border-t hover:bg-gray-50">
+                          <td className="px-4 py-3">
                             <Checkbox
                               checked={selectedResources.includes(resource.resource_id)}
                               onCheckedChange={() => handleSelectResource(resource.resource_id)}
                               aria-label={`选择资源 ${resource.resource_name}`}
                             />
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-4 py-3">
                             <div className="flex items-center">
                               {getResourceIcon(resource.resource_type)}
                               <div className="ml-4">
@@ -550,25 +540,25 @@ export default function TeacherResourcesPage() {
                                   {resource.resource_name}
                                 </div>
                                 {resource.resource_description && (
-                                  <div className="text-sm text-gray-500">
+                                  <div className="text-sm text-gray-500 max-w-xs truncate">
                                     {resource.resource_description}
                                   </div>
                                 )}
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className="px-4 py-3 text-sm text-gray-500">
                             {resource.resource_type === 'document' ? '文档' :
                               resource.resource_type === 'video' ? '视频' :
                                 resource.resource_type === 'archive' ? '压缩包' : '其他'}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className="px-4 py-3 text-sm text-gray-500">
                             {formatFileSize(resource.size)}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className="px-4 py-3 text-sm text-gray-500">
                             {new Date(resource.created_at).toLocaleString()}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <td className="px-4 py-3 text-right text-sm font-medium">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="sm">
