@@ -424,21 +424,22 @@ export default function TeacherResourcesPage() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-col space-y-4">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
-                <form onSubmit={handleSearch} className="flex w-full sm:w-auto space-x-2">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center space-y-2 md:space-y-0">
+                <form onSubmit={handleSearch} className="flex flex-1 mr-4">
                   <Input
-                    placeholder="搜索资源..."
+                    type="text"
+                    placeholder="搜索资源名称..."
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
-                    className="w-full sm:w-64"
+                    className="mr-2"
                   />
-                  <Button type="submit" variant="outline" size="icon">
+                  <Button type="submit" variant="outline">
                     <Search className="h-4 w-4" />
                   </Button>
                 </form>
-                <div className="flex w-full sm:w-auto space-x-2">
+                <div className="flex w-full md:w-auto space-x-2">
                   <Select value={resourceType} onValueChange={handleResourceTypeChange}>
-                    <SelectTrigger className="w-full sm:w-40">
+                    <SelectTrigger className="w-full md:w-40">
                       <SelectValue placeholder="资源类型" />
                     </SelectTrigger>
                     <SelectContent>
