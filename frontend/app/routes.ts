@@ -11,6 +11,7 @@ export default [
   route("/teacher/courses/:courseId/edit", "routes/teacher-course-detail.tsx"),
   route("/teacher/resources", "routes/teacher-resources.tsx"),
   route("/teacher/courses/:courseId/resources", "routes/teacher-course-resources.tsx"),
+  route("/teacher/courses/:courseId/students", "routes/teacher-course-students.tsx"),
   route("/student", "routes/student.tsx"),
   route("/courses", "routes/courses.tsx"),
   route("/courses/:courseId", "routes/course-detail.tsx"),

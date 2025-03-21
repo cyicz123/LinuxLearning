@@ -102,4 +102,75 @@ export const createContainer = async (courseId: number, imageId: number, contain
     console.error('创建容器失败:', error);
     throw error;
   }
+};
+
+/**
+ * 为学生创建容器
+ * @param courseId 课程ID
+ * @param studentId 学生ID
+ * @param imageId 镜像ID
+ * @param containerName 容器名称
+ * @returns 新创建的容器信息
+ */
+export const createContainerForStudent = async (
+  courseId: number,
+  studentId: number,
+  imageId: number,
+  containerName: string
+): Promise<Container> => {
+  try {
+    const response = await apiClient.post<{ container: Container }>(
+      `courses/${courseId}/students/${studentId}/containers`,
+      { image_id: imageId, container_name: containerName }
+    );
+    return response.container;
+  } catch (error) {
+    console.error('为学生创建容器失败:', error);
+    throw error;
+  }
+};
+
+/**
+ * 修改学生容器
+ * @param courseId 课程ID
+ * @param studentId 学生ID
+ * @param containerId 容器ID
+ * @param imageId 新镜像ID
+ * @returns 更新后的容器信息
+ */
+export const updateStudentContainer = async (
+  courseId: number,
+  studentId: number,
+  containerId: string,
+  imageId: number
+): Promise<Container> => {
+  try {
+    const response = await apiClient.put<{ container: Container }>(
+      `courses/${courseId}/students/${studentId}/containers/${containerId}`,
+      { image_id: imageId }
+    );
+    return response.container;
+  } catch (error) {
+    console.error('修改学生容器失败:', error);
+    throw error;
+  }
+};
+
+/**
+ * 删除学生容器
+ * @param courseId 课程ID
+ * @param studentId 学生ID
+ * @param containerId 容器ID
+ */
+export const deleteStudentContainer = async (
+  courseId: number,
+  studentId: number,
+  containerId: string
+): Promise<void> => {
+  try {
+    await apiClient.delete(`courses/${courseId}/students/${studentId}/containers/${containerId}`);
+  } catch (error) {
+    console.error('删除学生容器失败:', error);
+    throw error;
+  }
 }; 
