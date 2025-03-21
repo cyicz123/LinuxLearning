@@ -13,23 +13,23 @@ import Pagination from '../components/Pagination';
 import Navbar from '../components/Navbar';
 import CourseSidebar from '../components/CourseSidebar';
 import ScrollToTop from '../components/ScrollToTop';
-import { 
-  Search, 
-  Plus, 
-  Trash2, 
-  MoreVertical, 
-  Bell, 
-  Users, 
-  FileTextIcon, 
-  ChevronDown, 
-  ChevronRight, 
-  Play, 
-  Square, 
-  RefreshCw 
+import {
+  Search,
+  Plus,
+  Trash2,
+  MoreVertical,
+  Bell,
+  Users,
+  FileTextIcon,
+  ChevronDown,
+  ChevronRight,
+  Play,
+  Square,
+  RefreshCw
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { getCourseDetail, type CourseDetail } from '../services/courseService';
-import { 
+import {
   getCourseStudents,
   createStudentContainer,
   updateStudentContainer,
@@ -37,6 +37,7 @@ import {
   startStudentContainer,
   stopStudentContainer,
   restartStudentContainer,
+  batchRemoveStudentsFromCourse,
   type Student as CourseStudent,
   type Container
 } from '../services/studentService';
@@ -96,6 +97,10 @@ export default function TeacherCourseStudentsPage() {
   const [selectedImageId, setSelectedImageId] = useState<number | null>(null);
   const [availableImages, setAvailableImages] = useState<Image[]>([]);
   const [loadingImages, setLoadingImages] = useState(false);
+
+  // 批量删除状态
+  const [selectedStudents, setSelectedStudents] = useState<number[]>([]);
+  const [batchDeleteDialogOpen, setBatchDeleteDialogOpen] = useState(false);
 
   // 获取课程详情
   useEffect(() => {
@@ -480,6 +485,58 @@ export default function TeacherCourseStudentsPage() {
     }
   };
 
+  // 处理学生选择
+  const handleStudentSelect = (studentId: number) => {
+    setSelectedStudents(prev => {
+      if (prev.includes(studentId)) {
+        return prev.filter(id => id !== studentId);
+      } else {
+        return [...prev, studentId];
+      }
+    });
+  };
+
+  // 处理全选
+  const handleSelectAll = () => {
+    if (selectedStudents.length === students.length) {
+      setSelectedStudents([]);
+    } else {
+      setSelectedStudents(students.map(student => student.user_id));
+    }
+  };
+
+  // 批量删除学生
+  const handleBatchDelete = async () => {
+    if (!courseId || selectedStudents.length === 0) return;
+
+    try {
+      const success = await batchRemoveStudentsFromCourse(parseInt(courseId), selectedStudents);
+      if (success) {
+        toast.success('批量移除学生成功');
+        setBatchDeleteDialogOpen(false);
+        setSelectedStudents([]);
+
+        // 刷新学生列表
+        const data = await getCourseStudents(parseInt(courseId), {
+          page: currentPage,
+          limit: pageSize,
+          keyword: searchKeyword,
+          sort_by: sortBy,
+          sort_order: sortOrder
+        });
+
+        if (data) {
+          setStudents(data.students);
+        }
+      } else {
+        toast.error('批量移除学生失败');
+      }
+    } catch (error) {
+      console.error('批量移除学生时发生错误:', error);
+      toast.error('批量移除学生失败');
+    }
+  };
+
   if (courseLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -541,6 +598,16 @@ export default function TeacherCourseStudentsPage() {
             <Card>
               <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-2 sm:space-y-0">
                 <CardTitle>课程学生</CardTitle>
+                {selectedStudents.length > 0 && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setBatchDeleteDialogOpen(true)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    批量移除 ({selectedStudents.length})
+                  </Button>
+                )}
               </CardHeader>
 
               <CardContent>
@@ -597,6 +664,12 @@ export default function TeacherCourseStudentsPage() {
                       <table className="w-full border-collapse">
                         <thead>
                           <tr className="bg-gray-50">
+                            <th className="w-10 px-4 py-2">
+                              <Checkbox
+                                checked={selectedStudents.length === students.length}
+                                onCheckedChange={handleSelectAll}
+                              />
+                            </th>
                             <th className="w-10 px-4 py-2"></th>
                             <th className="px-4 py-2 text-left">学生姓名</th>
                             <th className="px-4 py-2 text-left">邮箱</th>
@@ -609,6 +682,12 @@ export default function TeacherCourseStudentsPage() {
                           {students.map((student) => (
                             <>
                               <tr key={student.user_id} className="border-t hover:bg-gray-50">
+                                <td className="px-4 py-3">
+                                  <Checkbox
+                                    checked={selectedStudents.includes(student.user_id)}
+                                    onCheckedChange={() => handleStudentSelect(student.user_id)}
+                                  />
+                                </td>
                                 <td className="px-4 py-3">
                                   <Button
                                     variant="ghost"
@@ -644,8 +723,8 @@ export default function TeacherCourseStudentsPage() {
                                       <span>运行中: {student.containers_stats.running_containers}/{student.containers_stats.total_containers}</span>
                                       <span>{Math.round((student.containers_stats.running_containers / Math.max(student.containers_stats.total_containers, 1)) * 100)}%</span>
                                     </div>
-                                    <Progress 
-                                      value={(student.containers_stats.running_containers / Math.max(student.containers_stats.total_containers, 1)) * 100} 
+                                    <Progress
+                                      value={(student.containers_stats.running_containers / Math.max(student.containers_stats.total_containers, 1)) * 100}
                                       className="h-2"
                                     />
                                   </div>
@@ -938,6 +1017,33 @@ export default function TeacherCourseStudentsPage() {
               onClick={handleDeleteContainer}
             >
               确认删除
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 批量删除确认对话框 */}
+      <Dialog open={batchDeleteDialogOpen} onOpenChange={setBatchDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>确认批量移除</DialogTitle>
+            <DialogDescription>
+              您确定要移除选中的 {selectedStudents.length} 名学生吗？此操作不可撤销。
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setBatchDeleteDialogOpen(false)}
+            >
+              取消
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleBatchDelete}
+            >
+              确认移除
             </Button>
           </DialogFooter>
         </DialogContent>
