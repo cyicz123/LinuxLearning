@@ -10,12 +10,12 @@ export default [
   route("/teacher/create-course", "routes/teacher/create-course.tsx"),
   route("/teacher/courses/:courseId/edit", "routes/teacher-course-detail.tsx"),
   route("/teacher/resources", "routes/teacher-resources.tsx"),
+  route("/teacher/images", "routes/teacher-images.tsx"),
   route("/teacher/courses/:courseId/resources", "routes/teacher-course-resources.tsx"),
   route("/teacher/courses/:courseId/students", "routes/teacher-course-students.tsx"),
   route("/student", "routes/student.tsx"),
   route("/courses", "routes/courses.tsx"),
   route("/courses/:courseId", "routes/course-detail.tsx"),
   route("/courses/:courseId/resources", "routes/course-resources.tsx"),
-  route("/courses/:courseId/images", "routes/course-images.tsx"),
   route("/containers", "routes/containers.tsx")
 ] satisfies RouteConfig;
