@@ -127,4 +127,44 @@ export const batchSetImageVisibility = async (
     console.error('批量设置镜像可见性失败:', error);
     return null;
   }
+};
+
+/**
+ * 更新镜像信息
+ * @param imageId 镜像ID
+ * @param data 更新的镜像信息
+ * @returns 更新结果
+ */
+export const updateImage = async (
+  imageId: number,
+  data: {
+    image_name: string;
+    image_description: string;
+    version: string;
+    os_type: 'ubuntu' | 'centos' | 'debian';
+    packages: string[];
+  }
+): Promise<boolean> => {
+  try {
+    await apiClient.put(`images/${imageId}`, data);
+    return true;
+  } catch (error) {
+    console.error('更新镜像失败:', error);
+    return false;
+  }
+};
+
+/**
+ * 删除镜像
+ * @param imageId 镜像ID
+ * @returns 删除结果
+ */
+export const deleteImage = async (imageId: number): Promise<boolean> => {
+  try {
+    await apiClient.delete(`images/${imageId}`);
+    return true;
+  } catch (error) {
+    console.error('删除镜像失败:', error);
+    return false;
+  }
 }; 

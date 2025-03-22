@@ -8,11 +8,11 @@ import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Textarea } from '../components/ui/textarea';
 import { Checkbox } from '../components/ui/checkbox';
-import { Loader2, Eye } from 'lucide-react';
+import { Loader2, Eye, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import Navbar from '../components/Navbar';
 import { useAuth } from '../contexts/AuthContext';
-import { getTeacherImages, createImage, batchSetImageVisibility, type Image } from '../services/imageService';
+import { getTeacherImages, createImage, batchSetImageVisibility, type Image, updateImage, deleteImage } from '../services/imageService';
 import { getTeacherCourses, type Course } from '../services/courseService';
 
 // 系统类型和对应的版本选项
@@ -61,6 +61,8 @@ export default function TeacherImagesPage() {
   const [selectedCourses, setSelectedCourses] = useState<number[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(false);
 
+  const [editingImage, setEditingImage] = useState<Image | null>(null);
+
   // 获取教师的课程列表
   useEffect(() => {
     const fetchCourses = async () => {
@@ -77,20 +79,21 @@ export default function TeacherImagesPage() {
   }, []);
 
   // 获取教师的镜像列表
-  useEffect(() => {
-    const fetchImages = async () => {
-      try {
-        setLoading(true);
-        const data = await getTeacherImages({});
-        setImages(data.images);
-      } catch (err) {
-        setError('获取镜像列表失败');
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchImages = async () => {
+    try {
+      setLoading(true);
+      const data = await getTeacherImages({});
+      setImages(data.images);
+    } catch (err) {
+      setError('获取镜像列表失败');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  // 在 useEffect 中使用 fetchImages
+  useEffect(() => {
     fetchImages();
   }, []);
 
@@ -271,6 +274,52 @@ export default function TeacherImagesPage() {
       toast.error('设置镜像可见性失败');
     } finally {
       setProcessingBatchVisibility(false);
+    }
+  };
+
+  // 添加编辑镜像的处理函数
+  const handleEditImage = async () => {
+    if (!editingImage) return;
+
+    try {
+      // 确保 os_type 不是 'other'
+      if (editingImage.os_type === 'other') {
+        toast.error('不支持的系统类型');
+        return;
+      }
+
+      // 确保 packages 不是 undefined
+      const packages = editingImage.packages || [];
+
+      await updateImage(editingImage.image_id, {
+        image_name: editingImage.image_name,
+        image_description: editingImage.image_description,
+        version: editingImage.version,
+        os_type: editingImage.os_type,
+        packages: packages
+      });
+      toast.success('镜像更新成功');
+      setEditingImage(null);
+      fetchImages();
+    } catch (error) {
+      console.error('更新镜像失败:', error);
+      toast.error('更新镜像失败');
+    }
+  };
+
+  // 修改删除镜像的处理函数
+  const handleDeleteImage = async (imageId: number) => {
+    try {
+      const result = await batchSetImageVisibility([imageId], [], 'remove');
+      if (result) {
+        toast.success('镜像删除成功');
+        fetchImages();
+      } else {
+        toast.error('删除镜像失败');
+      }
+    } catch (error) {
+      console.error('删除镜像失败:', error);
+      toast.error('删除镜像失败');
     }
   };
 
@@ -463,6 +512,7 @@ export default function TeacherImagesPage() {
                         <th className="px-4 py-2 text-left">系统类型</th>
                         <th className="px-4 py-2 text-left">版本</th>
                         <th className="px-4 py-2 text-left">软件包数量</th>
+                        <th className="px-4 py-2 text-left">操作</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -483,6 +533,25 @@ export default function TeacherImagesPage() {
                           <td className="px-4 py-3 text-gray-600">{image.version}</td>
                           <td className="px-4 py-3 text-gray-600">
                             {image.packages?.length || 0}
+                          </td>
+                          <td className="px-4 py-3 text-gray-600">
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setEditingImage(image)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteImage(image.image_id)}
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -593,6 +662,85 @@ export default function TeacherImagesPage() {
               disabled={selectedCourses.length === 0 || processingBatchVisibility}
             >
               {processingBatchVisibility ? '处理中...' : '确认设置'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 编辑镜像对话框 */}
+      <Dialog open={!!editingImage} onOpenChange={() => setEditingImage(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>编辑镜像</DialogTitle>
+            <DialogDescription>
+              修改镜像信息。修改后需要重新创建容器才能生效。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-image-name">镜像名称</Label>
+              <Input
+                id="edit-image-name"
+                value={editingImage?.image_name || ''}
+                onChange={(e) => setEditingImage(prev => prev ? {
+                  ...prev,
+                  image_name: e.target.value
+                } : null)}
+                placeholder="输入镜像名称"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-image-description">镜像描述</Label>
+              <Textarea
+                id="edit-image-description"
+                value={editingImage?.image_description || ''}
+                onChange={(e) => setEditingImage(prev => prev ? {
+                  ...prev,
+                  image_description: e.target.value
+                } : null)}
+                placeholder="输入镜像描述"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-image-version">系统版本</Label>
+              <Select
+                value={editingImage?.version || ''}
+                onValueChange={(value) => setEditingImage(prev => prev ? {
+                  ...prev,
+                  version: value
+                } : null)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="选择系统版本" />
+                </SelectTrigger>
+                <SelectContent>
+                  {editingImage?.os_type && editingImage.os_type !== 'other' && OS_VERSIONS[editingImage.os_type].map((version: string) => (
+                    <SelectItem key={version} value={version}>
+                      {version}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-image-packages">预装软件包</Label>
+              <Input
+                id="edit-image-packages"
+                value={editingImage?.packages?.join(', ') || ''}
+                onChange={(e) => setEditingImage(prev => prev ? {
+                  ...prev,
+                  packages: e.target.value.split(',').map(pkg => pkg.trim()).filter(Boolean)
+                } : null)}
+                placeholder="输入软件包名称，用逗号分隔"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingImage(null)}>
+              取消
+            </Button>
+            <Button onClick={handleEditImage}>
+              保存
             </Button>
           </DialogFooter>
         </DialogContent>
