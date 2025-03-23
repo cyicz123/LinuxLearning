@@ -11,11 +11,21 @@ import { Checkbox } from '../components/ui/checkbox';
 import { toast } from 'sonner';
 import Pagination from '../components/Pagination';
 import Navbar from '../components/Navbar';
-import { Search, Plus, Edit, Trash2, MoreVertical, Upload, X, UserPlus } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, MoreVertical, Upload, X, UserPlus, Copy, Check } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { formatDate } from '../utils/formatters';
 import { teacherService } from '../services/teacherService';
 import type { Teacher, CreateTeacherData } from '../services/teacherService';
+
+// 生成随机密码函数
+const generateRandomPassword = () => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()';
+  let password = '';
+  for (let i = 0; i < 12; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
+};
 
 export default function AdminTeachersPage() {
   const navigate = useNavigate();
@@ -40,11 +50,21 @@ export default function AdminTeachersPage() {
   const [newTeacher, setNewTeacher] = useState<CreateTeacherData>({
     username: '',
     email: '',
-    password: '',
+    password: generateRandomPassword(),
     phone: '',
     bio: ''
   });
   const [creating, setCreating] = useState(false);
+
+  // 创建成功对话框状态
+  const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+  const [createdTeacher, setCreatedTeacher] = useState<{
+    username: string;
+    email: string;
+    password: string;
+    user_id?: number;
+  } | null>(null);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   // 批量导入对话框状态
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -114,41 +134,66 @@ export default function AdminTeachersPage() {
 
   // 处理新建教师
   const handleCreateTeacher = async () => {
-    if (!newTeacher.username || !newTeacher.email || !newTeacher.password) {
-      toast.error('请填写必填字段');
+    if (!newTeacher.username || !newTeacher.email) {
+      toast.error('请填写用户名和邮箱');
       return;
     }
 
     try {
       setCreating(true);
-      await teacherService.createTeacher(newTeacher);
-      toast.success('教师创建成功');
+      const response = await teacherService.createTeacher(newTeacher);
+      setCreatedTeacher({
+        username: newTeacher.username,
+        email: newTeacher.email,
+        password: newTeacher.password,
+        user_id: response.user_id
+      });
+
+      // 关闭创建对话框，打开成功对话框
       setCreateDialogOpen(false);
+      setSuccessDialogOpen(true);
+
       // 重置表单
       setNewTeacher({
         username: '',
         email: '',
-        password: '',
+        password: generateRandomPassword(),
         phone: '',
         bio: ''
       });
+
       // 刷新列表
-      const response = await teacherService.getTeachers({
+      const refreshResponse = await teacherService.getTeachers({
         page: currentPage,
         limit: pageSize,
         keyword: searchKeyword,
         sort_by: sortBy,
         sort_order: sortOrder
       });
-      setTeachers(response.teachers);
-      setTotalTeachers(response.total);
-      setTotalPages(Math.ceil(response.total / pageSize));
+      setTeachers(refreshResponse.teachers);
+      setTotalTeachers(refreshResponse.total);
+      setTotalPages(Math.ceil(refreshResponse.total / pageSize));
     } catch (error) {
       console.error('创建教师时发生错误:', error);
       toast.error('创建教师时发生错误');
     } finally {
       setCreating(false);
     }
+  };
+
+  // 处理复制功能
+  const handleCopyAll = () => {
+    if (!createdTeacher) return;
+
+    const textToCopy = `用户名: ${createdTeacher.username}\n邮箱: ${createdTeacher.email}\n密码: ${createdTeacher.password}`;
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      setCopySuccess(true);
+      toast.success('已复制账号信息');
+      setTimeout(() => {
+        setCopySuccess(false);
+      }, 2000);
+    });
   };
 
   // 处理批量导入
@@ -448,22 +493,26 @@ export default function AdminTeachersPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>新建教师</DialogTitle>
+            <DialogDescription>
+              创建新教师账号，密码将自动生成
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="username" className="text-right">
-                用户名
+                用户名 <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="username"
                 value={newTeacher.username}
                 onChange={(e) => setNewTeacher({ ...newTeacher, username: e.target.value })}
                 className="col-span-3"
+                required
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="email" className="text-right">
-                邮箱
+                邮箱 <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="email"
@@ -471,18 +520,19 @@ export default function AdminTeachersPage() {
                 value={newTeacher.email}
                 onChange={(e) => setNewTeacher({ ...newTeacher, email: e.target.value })}
                 className="col-span-3"
+                required
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="password" className="text-right">
+              <Label htmlFor="generated-password" className="text-right">
                 密码
               </Label>
               <Input
-                id="password"
-                type="password"
+                id="generated-password"
+                type="text"
                 value={newTeacher.password}
-                onChange={(e) => setNewTeacher({ ...newTeacher, password: e.target.value })}
-                className="col-span-3"
+                className="col-span-3 bg-gray-50"
+                readOnly
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
@@ -522,6 +572,70 @@ export default function AdminTeachersPage() {
               disabled={creating}
             >
               {creating ? '创建中...' : '创建'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 创建成功对话框 */}
+      <Dialog open={successDialogOpen} onOpenChange={setSuccessDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>教师创建成功</DialogTitle>
+            <DialogDescription>
+              新教师账号已创建，请保存以下登录信息
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="created-username" className="text-right">
+                用户名
+              </Label>
+              <Input
+                id="created-username"
+                value={createdTeacher?.username || ''}
+                readOnly
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="created-email" className="text-right">
+                邮箱
+              </Label>
+              <Input
+                id="created-email"
+                value={createdTeacher?.email || ''}
+                readOnly
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="created-password" className="text-right">
+                密码
+              </Label>
+              <Input
+                id="created-password"
+                value={createdTeacher?.password || ''}
+                readOnly
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex justify-between">
+            <Button
+              type="button"
+              onClick={handleCopyAll}
+              className="flex items-center"
+              disabled={copySuccess}
+            >
+              {copySuccess ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
+              {copySuccess ? '已复制' : '一键复制'}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => setSuccessDialogOpen(false)}
+            >
+              关闭
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -20,6 +20,13 @@ export interface CreateTeacherData {
   bio?: string;
 }
 
+export interface CreateTeacherResponse {
+  user_id: number;
+  username: string;
+  password: string;
+  email: string;
+}
+
 export interface TeachersResponse {
   teachers: Teacher[];
   total: number;
@@ -60,8 +67,9 @@ export const teacherService = {
   },
 
   // 创建教师
-  createTeacher: async (data: CreateTeacherData): Promise<Teacher> => {
-    return apiClient.post('admin/teachers', data);
+  createTeacher: async (data: CreateTeacherData): Promise<CreateTeacherResponse> => {
+    const response = await apiClient.post<CreateTeacherResponse>('admin/teachers', data);
+    return response;
   },
 
   // 批量导入教师
