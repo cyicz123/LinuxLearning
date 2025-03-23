@@ -18,5 +18,7 @@ export default [
   route("/courses/:courseId", "routes/course-detail.tsx"),
   route("/courses/:courseId/resources", "routes/course-resources.tsx"),
   route("/containers", "routes/containers.tsx"),
-  route("/admin", "routes/admin.tsx")
+  route("/admin", "routes/admin.tsx"),
+  route("/admin/teachers", "routes/admin-teachers.tsx"),
+  route("/admin/teachers/:teacherId", "routes/admin-teacher-detail.tsx")
 ] satisfies RouteConfig;
