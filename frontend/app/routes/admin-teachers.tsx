@@ -11,11 +11,14 @@ import { Checkbox } from '../components/ui/checkbox';
 import { toast } from 'sonner';
 import Pagination from '../components/Pagination';
 import Navbar from '../components/Navbar';
-import { Search, Plus, Edit, Trash2, MoreVertical, Upload, X, UserPlus, Copy, Check } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, MoreVertical, Upload, X, UserPlus, Copy, Check, AlertCircle, Download } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../components/ui/dropdown-menu';
 import { formatDate } from '../utils/formatters';
 import { teacherService } from '../services/teacherService';
-import type { Teacher, CreateTeacherData } from '../services/teacherService';
+import type { Teacher, CreateTeacherData, ImportTeacherItem } from '../services/teacherService';
+import * as XLSX from 'xlsx';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import { Badge } from '../components/ui/badge';
 
 // 生成随机密码函数
 const generateRandomPassword = () => {
@@ -25,6 +28,32 @@ const generateRandomPassword = () => {
     password += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return password;
+};
+
+// 添加一个用于生成和下载Excel模板的函数
+const downloadTemplate = () => {
+  // 创建工作表数据
+  const ws = XLSX.utils.json_to_sheet([
+    {
+      "用户名": "教师1",
+      "邮箱": "teacher1@example.com",
+      "简介": "这里是教师简介"
+    },
+    {
+      "用户名": "教师2",
+      "邮箱": "teacher2@example.com",
+      "简介": "这里是教师简介"
+    }
+  ]);
+
+  // 创建工作簿
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "教师模板");
+
+  // 生成Excel文件并下载
+  XLSX.writeFile(wb, "教师导入模板.xlsx");
+
+  toast.success("模板已下载");
 };
 
 export default function AdminTeachersPage() {
@@ -51,7 +80,6 @@ export default function AdminTeachersPage() {
     username: '',
     email: '',
     password: generateRandomPassword(),
-    phone: '',
     bio: ''
   });
   const [creating, setCreating] = useState(false);
@@ -68,7 +96,10 @@ export default function AdminTeachersPage() {
 
   // 批量导入对话框状态
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [importPreview, setImportPreview] = useState<ImportTeacherItem[]>([]);
+  const [parseErrors, setParseErrors] = useState<{ [key: number]: string }>({});
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -129,7 +160,74 @@ export default function AdminTeachersPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       setSelectedFile(e.target.files[0]);
+      parseExcelFile(e.target.files[0]);
     }
+  };
+
+  // 解析Excel文件
+  const parseExcelFile = async (file: File) => {
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data);
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet) as any[];
+
+      const teachers: ImportTeacherItem[] = [];
+      const errors: { [key: number]: string } = {};
+
+      jsonData.forEach((row, index) => {
+        const teacher: ImportTeacherItem = {
+          username: row.username || row['用户名'] || '',
+          email: row.email || row['邮箱'] || '',
+          bio: row.bio || row['简介'] || '',
+          password: generateRandomPassword() // 为每个导入的用户生成随机密码
+        };
+
+        // 验证必填字段
+        if (!teacher.username) {
+          errors[index] = '用户名不能为空';
+        } else if (!teacher.email) {
+          errors[index] = '邮箱不能为空';
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(teacher.email)) {
+          errors[index] = '邮箱格式不正确';
+        }
+
+        teachers.push(teacher);
+      });
+
+      setImportPreview(teachers);
+      setParseErrors(errors);
+      setPreviewDialogOpen(true);
+      setImportDialogOpen(false);
+    } catch (error) {
+      console.error('解析Excel文件错误:', error);
+      toast.error('解析Excel文件时发生错误');
+    }
+  };
+
+  // 更新导入预览中的教师信息
+  const updatePreviewTeacher = (index: number, field: keyof ImportTeacherItem, value: string) => {
+    const updatedPreview = [...importPreview];
+    updatedPreview[index] = { ...updatedPreview[index], [field]: value };
+
+    // 重新验证
+    const errors = { ...parseErrors };
+    if (field === 'username' && !value) {
+      errors[index] = '用户名不能为空';
+    } else if (field === 'email') {
+      if (!value) {
+        errors[index] = '邮箱不能为空';
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+        errors[index] = '邮箱格式不正确';
+      } else {
+        delete errors[index];
+      }
+    } else if (field === 'username' && value && updatedPreview[index].email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(updatedPreview[index].email)) {
+      delete errors[index];
+    }
+
+    setImportPreview(updatedPreview);
+    setParseErrors(errors);
   };
 
   // 处理新建教师
@@ -158,7 +256,6 @@ export default function AdminTeachersPage() {
         username: '',
         email: '',
         password: generateRandomPassword(),
-        phone: '',
         bio: ''
       });
 
@@ -198,20 +295,25 @@ export default function AdminTeachersPage() {
 
   // 处理批量导入
   const handleImportTeachers = async () => {
-    if (!selectedFile) {
-      toast.error('请选择要导入的文件');
+    // 过滤掉有错误的记录
+    const validTeachers = importPreview.filter((_, index) => !parseErrors[index]);
+
+    if (validTeachers.length === 0) {
+      toast.error('没有有效的教师数据可导入');
       return;
     }
 
     try {
       setImporting(true);
-      const response = await teacherService.importTeachers(selectedFile);
+      const response = await teacherService.importTeachers(validTeachers);
       toast.success(`成功导入 ${response.success_count} 个教师`);
       if (response.failed_count > 0) {
         toast.warning(`有 ${response.failed_count} 个教师导入失败`);
       }
-      setImportDialogOpen(false);
+      setPreviewDialogOpen(false);
       setSelectedFile(null);
+      setImportPreview([]);
+      setParseErrors({});
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -386,7 +488,6 @@ export default function AdminTeachersPage() {
                       </th>
                       <th className="px-4 py-2 text-left">教师姓名</th>
                       <th className="px-4 py-2 text-left">邮箱</th>
-                      <th className="px-4 py-2 text-left">电话</th>
                       <th className="px-4 py-2 text-left">课程数</th>
                       <th className="px-4 py-2 text-left">学生数</th>
                       <th className="px-4 py-2 text-left">创建时间</th>
@@ -435,7 +536,6 @@ export default function AdminTeachersPage() {
                             </div>
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-500">{teacher.email}</td>
-                          <td className="px-4 py-3 text-sm text-gray-500">{teacher.phone}</td>
                           <td className="px-4 py-3 text-sm text-gray-500">{teacher.course_count}</td>
                           <td className="px-4 py-3 text-sm text-gray-500">{teacher.student_count}</td>
                           <td className="px-4 py-3 text-sm text-gray-500">{formatDate(teacher.created_at)}</td>
@@ -533,17 +633,6 @@ export default function AdminTeachersPage() {
                 value={newTeacher.password}
                 className="col-span-3 bg-gray-50"
                 readOnly
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="phone" className="text-right">
-                电话
-              </Label>
-              <Input
-                id="phone"
-                value={newTeacher.phone}
-                onChange={(e) => setNewTeacher({ ...newTeacher, phone: e.target.value })}
-                className="col-span-3"
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
@@ -647,7 +736,7 @@ export default function AdminTeachersPage() {
           <DialogHeader>
             <DialogTitle>批量导入教师</DialogTitle>
             <DialogDescription>
-              请上传包含教师信息的Excel文件。文件必须包含以下字段：用户名、邮箱、密码。
+              请上传包含教师信息的Excel文件。文件必须包含以下字段：用户名、邮箱。密码将自动生成。
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -694,6 +783,22 @@ export default function AdminTeachersPage() {
                 </div>
               </div>
             </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">
+                模板下载
+              </Label>
+              <div className="col-span-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex items-center text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-0"
+                  onClick={downloadTemplate}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  下载Excel导入模板
+                </Button>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button
@@ -705,10 +810,118 @@ export default function AdminTeachersPage() {
             </Button>
             <Button
               type="button"
-              onClick={handleImportTeachers}
-              disabled={importing || !selectedFile}
+              onClick={() => parseExcelFile(selectedFile!)}
+              disabled={!selectedFile}
             >
-              {importing ? '导入中...' : '导入'}
+              下一步
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 导入预览对话框 */}
+      <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto" style={{ width: '75vw', maxWidth: '75vw' }}>
+          <DialogHeader>
+            <DialogTitle>批量导入预览</DialogTitle>
+            <DialogDescription>
+              请检查并编辑导入数据，红色标记的行存在错误需要修复。密码将自动随机生成。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="flex justify-between mb-4">
+              <div className="text-sm text-muted-foreground">
+                总共 {importPreview.length} 条记录，
+                <span className="text-green-600">{importPreview.length - Object.keys(parseErrors).length} 条有效</span>，
+                <span className="text-red-600">{Object.keys(parseErrors).length} 条错误</span>
+              </div>
+            </div>
+
+            <div className="border rounded-md overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10">序号</TableHead>
+                    <TableHead className="min-w-[120px]">用户名</TableHead>
+                    <TableHead className="min-w-[180px]">邮箱</TableHead>
+                    <TableHead className="min-w-[120px]">密码</TableHead>
+                    <TableHead className="min-w-[150px]">简介</TableHead>
+                    <TableHead className="w-32">状态</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {importPreview.map((teacher, index) => (
+                    <TableRow key={index} className={parseErrors[index] ? "bg-red-50" : ""}>
+                      <TableCell>{index + 1}</TableCell>
+                      <TableCell>
+                        <Input
+                          value={teacher.username}
+                          onChange={(e) => updatePreviewTeacher(index, 'username', e.target.value)}
+                          className={parseErrors[index] && !teacher.username ? "border-red-500" : ""}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          value={teacher.email}
+                          onChange={(e) => updatePreviewTeacher(index, 'email', e.target.value)}
+                          className={parseErrors[index] && (!teacher.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(teacher.email)) ? "border-red-500" : ""}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          value={teacher.password || ''}
+                          readOnly
+                          className="bg-gray-50"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          value={teacher.bio || ''}
+                          onChange={(e) => updatePreviewTeacher(index, 'bio', e.target.value)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        {parseErrors[index] ? (
+                          <Badge variant="destructive" className="flex items-center gap-1">
+                            <AlertCircle className="h-3 w-3" />
+                            <span className="text-xs">{parseErrors[index]}</span>
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                            有效
+                          </Badge>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {importPreview.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
+                        没有找到可导入的数据
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setPreviewDialogOpen(false);
+                setImportDialogOpen(true);
+              }}
+            >
+              返回
+            </Button>
+            <Button
+              type="button"
+              onClick={handleImportTeachers}
+              disabled={importing || importPreview.length === 0 || Object.keys(parseErrors).length === importPreview.length}
+            >
+              {importing ? '导入中...' : `导入 ${importPreview.length - Object.keys(parseErrors).length} 条有效数据`}
             </Button>
           </DialogFooter>
         </DialogContent>

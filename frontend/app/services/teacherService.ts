@@ -4,7 +4,6 @@ export interface Teacher {
   user_id: number;
   username: string;
   email: string;
-  phone: string;
   avatar: string;
   bio: string;
   created_at: string;
@@ -16,7 +15,6 @@ export interface CreateTeacherData {
   username: string;
   email: string;
   password: string;
-  phone?: string;
   bio?: string;
 }
 
@@ -32,9 +30,23 @@ export interface TeachersResponse {
   total: number;
 }
 
+export interface ImportTeacherItem {
+  username: string;
+  email: string;
+  password?: string;
+  bio?: string;
+}
+
 export interface ImportResponse {
+  total: number;
   success_count: number;
   failed_count: number;
+  details: Array<{
+    username: string;
+    email: string;
+    success: boolean;
+    error?: string;
+  }>;
 }
 
 export interface BatchDeleteResponse {
@@ -73,10 +85,8 @@ export const teacherService = {
   },
 
   // 批量导入教师
-  importTeachers: async (file: File): Promise<ImportResponse> => {
-    const formData = new FormData();
-    formData.append('file', file);
-    return apiClient.postFormData('admin/teachers/batch-import', formData);
+  importTeachers: async (teachers: ImportTeacherItem[]): Promise<ImportResponse> => {
+    return apiClient.post('admin/teachers/batch-import', { teachers });
   },
 
   // 删除教师
