@@ -6,3 +6,4 @@
 *.xls
 *.xlsx
 node_modules
+backend/docker/mysql/data
