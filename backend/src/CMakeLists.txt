@@ -1,12 +1,6 @@
 # 源代码目录CMakeLists.txt
-
-# 收集所有源文件（排除main.cpp）
-file(GLOB_RECURSE SOURCES "*.cpp")
-list(FILTER SOURCES EXCLUDE REGEX "main\\.cpp$")
-file(GLOB_RECURSE HEADERS "*.h" "*.hpp")
-
 # 创建应用程序主可执行文件
-add_executable(linux_learning_platform main.cpp ${SOURCES})
+add_executable(linux_learning_platform main.cpp)
 
 # 添加子目录
 add_subdirectory(api)
@@ -40,6 +34,8 @@ target_link_libraries(linux_learning_platform
     ${CMAKE_THREAD_LIBS_INIT}
     ${OPENSSL_LIBRARIES}
     ${MYSQL_LIBRARIES}
+    OpenSSL::SSL 
+    OpenSSL::Crypto
 )
 
 # 安装目标

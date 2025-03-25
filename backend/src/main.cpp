@@ -6,6 +6,7 @@
 
 // 项目自定义头文件
 #include "config/config.h"
+#include "db/database.h"
 #include "routes/route_manager.h"
 // #include "api/api_manager.h"
 // #include "db/database.h"
@@ -27,8 +28,18 @@ int main(int argc, char *argv[]) {
   // 设置Crow应用
   crow::SimpleApp app;
 
-  // TODO: 初始化数据库连接
-  // auto database = std::make_shared<Database>(config);
+  // 初始化数据库连接
+  std::shared_ptr<linux_learning_platform::Database> database;
+  try {
+    database = std::make_shared<linux_learning_platform::Database>(config);
+    if (!database->testConnection()) {
+      spdlog::error("数据库连接测试失败");
+      return 1;
+    }
+  } catch (const std::exception &e) {
+    spdlog::error("数据库初始化失败: {}", e.what());
+    return 1;
+  }
 
   // 注册所有路由
   linux_learning_platform::RouteManager::registerRoutes(app);
