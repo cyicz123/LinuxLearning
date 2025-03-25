@@ -1,7 +1,8 @@
 # 源代码目录CMakeLists.txt
 
-# 收集所有源文件
+# 收集所有源文件（排除main.cpp）
 file(GLOB_RECURSE SOURCES "*.cpp")
+list(FILTER SOURCES EXCLUDE REGEX "main\\.cpp$")
 file(GLOB_RECURSE HEADERS "*.h" "*.hpp")
 
 # 创建应用程序主可执行文件
@@ -16,6 +17,7 @@ add_subdirectory(db)
 add_subdirectory(docker)
 add_subdirectory(middleware)
 add_subdirectory(models)
+add_subdirectory(routes)
 add_subdirectory(utils)
 
 # 添加依赖项目 - 移除mysql_connector_cpp
