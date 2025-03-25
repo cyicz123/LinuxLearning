@@ -27,6 +27,7 @@ target_include_directories(linux_learning_platform
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CROW_INCLUDE_DIR}
     ${JWT_CPP_INCLUDE_DIR}
+    ${MYSQL_INCLUDE_DIR}
     ${SPDLOG_INCLUDE_DIR}
     ${OPENSSL_INCLUDE_DIR}
 )
@@ -36,8 +37,7 @@ target_link_libraries(linux_learning_platform
     PRIVATE
     ${CMAKE_THREAD_LIBS_INIT}
     ${OPENSSL_LIBRARIES}
-    # MySQL依赖项，需要根据实际情况调整
-    # ${MYSQL_LIBRARIES}
+    ${MYSQL_LIBRARIES}
 )
 
 # 安装目标

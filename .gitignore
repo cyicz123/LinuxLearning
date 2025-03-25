@@ -5,5 +5,7 @@
 *.ppt
 *.xls
 *.xlsx
+.vscode
 node_modules
 backend/docker/mysql/data
+build
