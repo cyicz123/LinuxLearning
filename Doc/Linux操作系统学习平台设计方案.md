@@ -104,8 +104,7 @@ Linux操作系统学习平台采用C++开发，基于B/S架构，分为前端展
 
 依赖库
 - **JWT验证**：jwt-cpp (https://github.com/Thalhammer/jwt-cpp)
-- **HTTP服务器**：Crow (https://github.com/CrowCpp/Crow)
-- **JSON处理**：nlohmann/json (https://github.com/nlohmann/json)
+- **HTTP服务器**：Crow (https://github.com/CrowCpp/Crow) (包含内置的JSON处理功能)
 - **数据库处理**：MySQL Connector/C++ (https://dev.mysql.com/doc/connector-cpp/en/)
 - **日志库**：spdlog (https://github.com/gabime/spdlog)
 
@@ -725,7 +724,7 @@ ORDER BY
 
 ### 5.2 后端技术栈
 - **C++**：核心业务逻辑实现
-- **Crow**：C++的轻量级Web框架
+- **Crow**：C++的轻量级Web框架（包含内置的JSON处理功能）
 - **MySQL**：关系型数据库
 - **Docker API**：管理Docker容器
 - **JSON**：数据交换格式
@@ -820,5 +819,5 @@ ORDER BY
 
 - **JWT验证**：jwt-cpp (https://github.com/Thalhammer/jwt-cpp)
 - **密码哈希**：OpenSSL/Crypto++ (用于密码哈希)
-- **HTTP服务器**：Crow (https://github.com/CrowCpp/Crow)
+- **HTTP服务器**：Crow (https://github.com/CrowCpp/Crow) (包含内置的JSON处理功能)
 - **数据库驱动**：MySQL Connector/C++ (https://dev.mysql.com/doc/connector-cpp/en/)

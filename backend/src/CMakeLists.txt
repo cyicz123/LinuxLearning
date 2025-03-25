@@ -19,14 +19,13 @@ add_subdirectory(models)
 add_subdirectory(utils)
 
 # 添加依赖项目
-add_dependencies(linux_learning_platform crow nlohmann_json jwt_cpp spdlog)
+add_dependencies(linux_learning_platform crow jwt_cpp spdlog)
 
 # 包含目录
 target_include_directories(linux_learning_platform
     PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CROW_INCLUDE_DIR}
-    ${JSON_INCLUDE_DIR}
     ${JWT_CPP_INCLUDE_DIR}
     ${SPDLOG_INCLUDE_DIR}
     ${OPENSSL_INCLUDE_DIR}

@@ -37,18 +37,6 @@ ExternalProject_Add(
 ExternalProject_Get_Property(crow source_dir)
 set(CROW_INCLUDE_DIR ${source_dir}/include)
 
-# nlohmann/json - JSON 处理库
-ExternalProject_Add(
-    nlohmann_json
-    GIT_REPOSITORY https://github.com/nlohmann/json.git
-    GIT_TAG v3.11.2
-    CMAKE_ARGS -DJSON_BuildTests=OFF
-    INSTALL_COMMAND ""
-    UPDATE_COMMAND ""
-)
-ExternalProject_Get_Property(nlohmann_json source_dir)
-set(JSON_INCLUDE_DIR ${source_dir}/include)
-
 # jwt-cpp - JWT 处理库
 ExternalProject_Add(
     jwt_cpp
