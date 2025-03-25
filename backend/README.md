@@ -26,7 +26,6 @@ backend/
 
 - C++ 17
 - Crow (HTTP服务器框架)
-- nlohmann/json (JSON处理)
 - jwt-cpp (JWT认证)
 - spdlog (日志库)
 - MySQL Connector/C++ (数据库访问)

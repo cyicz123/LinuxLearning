@@ -36,9 +36,14 @@ int main(int argc, char* argv[]) {
     // TODO: 初始化数据库连接
     // auto database = std::make_shared<Database>(config);
     
-    // TODO: 注册API路由
-    // ApiManager apiManager(app, database, config);
-    // apiManager.registerRoutes();
+    // 注册认证相关路由
+    #include "auth/auth_controller.h"
+    
+    CROW_ROUTE(app, "/api/v1/auth/register")
+    .methods("POST"_method)
+    ([](const crow::request& req) {
+        return AuthController::registerUser(req);
+    });
     
     // 健康检查路由
     CROW_ROUTE(app, "/health")

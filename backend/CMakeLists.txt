@@ -64,58 +64,44 @@ ExternalProject_Add(
 ExternalProject_Get_Property(spdlog source_dir)
 set(SPDLOG_INCLUDE_DIR ${source_dir}/include)
 
-# MySQL Connector/C++ 配置
-option(DOWNLOAD_MYSQL_CONNECTOR "Download and build MySQL Connector/C++ if not found on system" ON)
+# MySQL 配置 - 使用系统安装的MySQL Connector/C++
+message(STATUS "使用系统安装的MySQL Connector/C++")
 
-# 首先尝试查找系统安装的MySQL
-find_package(MySQL QUIET)
-if(MySQL_FOUND)
-    message(STATUS "Found MySQL: ${MySQL_INCLUDE_DIRS}")
-    set(MYSQL_INCLUDE_DIR ${MySQL_INCLUDE_DIRS})
-    set(MYSQL_LIBRARIES ${MySQL_LIBRARIES})
-else()
-    # 尝试查找MySQL Connector/C++
-    find_package(mysqlcppconn QUIET)
-    if(mysqlcppconn_FOUND)
-        message(STATUS "Found MySQL Connector/C++: ${mysqlcppconn_INCLUDE_DIRS}")
-        set(MYSQL_INCLUDE_DIR ${mysqlcppconn_INCLUDE_DIRS})
-        set(MYSQL_LIBRARIES ${mysqlcppconn_LIBRARIES})
-    elseif(DOWNLOAD_MYSQL_CONNECTOR)
-        message(STATUS "MySQL Connector/C++ not found, will download and build from source")
-        
-        # 下载并构建MySQL Connector/C++
-        ExternalProject_Add(
-            mysql_connector_cpp
-            GIT_REPOSITORY https://github.com/mysql/mysql-connector-cpp.git
-            GIT_TAG 8.0.25
-            CMAKE_ARGS 
-                -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-                -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/mysql_connector
-                -DWITH_BOOST=${CMAKE_BINARY_DIR}/boost
-                -DBUILD_STATIC=ON
-                -DWITH_SSL=${OPENSSL_ROOT_DIR}
-                -DWITH_JDBC=ON
-            INSTALL_COMMAND ${CMAKE_COMMAND} --build . --target install
-            UPDATE_COMMAND ""
-        )
-        
-        # 设置MySQL Connector/C++的包含目录和库目录
-        set(MYSQL_INCLUDE_DIR ${CMAKE_BINARY_DIR}/mysql_connector/include)
-        set(MYSQL_LIBRARIES 
-            ${CMAKE_BINARY_DIR}/mysql_connector/lib/libmysqlcppconn-static.a 
-            ${CMAKE_BINARY_DIR}/mysql_connector/lib/libmysqlcppconn8-static.a
-        )
-        
-        # 添加依赖关系，确保mysql_connector_cpp在其他目标之前构建
-        add_dependencies(mysql_connector_cpp OpenSSL::SSL)
-    else()
-        message(FATAL_ERROR "MySQL Connector/C++ not found and DOWNLOAD_MYSQL_CONNECTOR is OFF. Please install MySQL Connector/C++ or enable download option.")
-    endif()
+# 查找MySQL Connector/C++
+find_path(MYSQL_INCLUDE_DIR
+    NAMES mysql_connection.h
+    PATHS /usr/include/mysql /usr/include/mysql-cppconn /usr/include/mysql-cppconn-8 /usr/local/include/mysql-cppconn
+    PATH_SUFFIXES mysql-connector-c++ mysql
+)
+
+find_library(MYSQLCPPCONN_LIBRARY
+    NAMES mysqlcppconn
+    PATHS /usr/lib /usr/lib64 /usr/local/lib /usr/local/lib64
+)
+
+find_library(MYSQLCPPCONN8_LIBRARY
+    NAMES mysqlcppconn8
+    PATHS /usr/lib /usr/lib64 /usr/local/lib /usr/local/lib64
+)
+
+# 检查是否找到了库
+if(NOT MYSQL_INCLUDE_DIR)
+    message(FATAL_ERROR "未找到MySQL Connector/C++头文件，请安装libmysqlcppconn-dev包")
 endif()
 
-# 设置MySQL包含目录和库，供子目录使用
-set(MYSQL_INCLUDE_DIR ${MYSQL_INCLUDE_DIR} CACHE PATH "MySQL include directory")
-set(MYSQL_LIBRARIES ${MYSQL_LIBRARIES} CACHE STRING "MySQL libraries")
+if(NOT MYSQLCPPCONN_LIBRARY)
+    message(FATAL_ERROR "未找到libmysqlcppconn库，请安装libmysqlcppconn-dev包")
+endif()
+
+message(STATUS "找到MySQL包含目录: ${MYSQL_INCLUDE_DIR}")
+message(STATUS "找到MySQL库: ${MYSQLCPPCONN_LIBRARY}")
+if(MYSQLCPPCONN8_LIBRARY)
+    message(STATUS "找到MySQL8库: ${MYSQLCPPCONN8_LIBRARY}")
+    set(MYSQL_LIBRARIES ${MYSQLCPPCONN_LIBRARY} ${MYSQLCPPCONN8_LIBRARY})
+else()
+    message(STATUS "未找到MySQL8库，仅使用基础库")
+    set(MYSQL_LIBRARIES ${MYSQLCPPCONN_LIBRARY})
+endif()
 
 # 添加项目源代码目录
 add_subdirectory(src)

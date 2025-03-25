@@ -7,8 +7,8 @@
   "database": {
     "host": "localhost",
     "port": 3306,
-    "user": "root",
-    "password": "password",
+    "user": "linux_learning",
+    "password": "linux123",
     "dbname": "linux_learning_platform"
   },
   "jwt": {

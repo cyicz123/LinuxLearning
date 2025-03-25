@@ -18,7 +18,7 @@ add_subdirectory(middleware)
 add_subdirectory(models)
 add_subdirectory(utils)
 
-# 添加依赖项目
+# 添加依赖项目 - 移除mysql_connector_cpp
 add_dependencies(linux_learning_platform crow jwt_cpp spdlog)
 
 # 包含目录
